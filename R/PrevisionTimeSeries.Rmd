@@ -49,6 +49,8 @@ pre { /* Code block - determines code spacing between lines */
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+source("Fonctions.R", local = knitr::knit_global())
+
 #install for export in pdf file
 #tinytex::install_tinytex()
 ```
@@ -68,14 +70,28 @@ require(MLmetrics)
 library(ggplot2)
 library(fpp2)
 library(MLmetrics)
+
 ```
 
+# Introduction
 
+Nous souhaitons réalisé l’étude d'une série temporelle et de faire des prévisions sur celle-ci.
+
+Cette série temporelle est le trafic mensuel d’une Compagnie aérienne de janvier 2011 à août 2019.
+
+Nos prévisions portent sur les 8 mois de l’année 2019
 
 Import de la base, on select que la colonne des valeurs
 ```{r}
-data <- read.csv("Trafic-voyageurs.csv", sep=";")
+library(readr)
+data <- read_delim("Trafic-voyageurs.csv", 
+    delim = ";", locale = locale(encoding = "ISO-8859-1"))
+```
+```{r}
 summary(data)
+```
+
+```{r}
 data_value <- data[,2]
 ```
 
@@ -83,11 +99,12 @@ data_value <- data[,2]
 Création de la série chronologique : 
 ```{r}
 data_ts <- ts(data_value, start=2011, frequency=12)
-
-#plot(data_ts)
-autoplot(data_ts) + ggtitle("Série chronologique Trafic voyageurs") +
-  ylab("Nbr voyageurs")
+plot_1_TimeSeries(data_ts)
 ```
+
+
+
+
 
 ```{r}
 #revoir l affichage car ca prend pas en compte tt 2019
