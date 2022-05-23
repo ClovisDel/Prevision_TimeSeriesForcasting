@@ -11,7 +11,12 @@ output:
     number_sections: no
     toc: yes
     toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
+
+```{=html}
 <style type="text/css">
 
 body{ /* Normal  */
@@ -44,7 +49,7 @@ pre { /* Code block - determines code spacing between lines */
     font-size: 14px;
 }
 </style>
-
+```
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -53,6 +58,7 @@ source("Fonctions.R", local = knitr::knit_global())
 #install for export in pdf file
 #tinytex::install_tinytex()
 ```
+
 <br> </br>
 
 ```{r include=FALSE}
@@ -65,31 +71,36 @@ require(fpp2)
 if(!require(MLmetrics)) install.packages("tm", repos = "http://cran.us.r-project.org")
 require(MLmetrics)
 
+if(!require(ggplot2)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(ggplot2)
 
-library(ggplot2)
-library(fpp2)
-library(MLmetrics)
+if(!require(fpp2)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(fpp2)
 
 ```
 
 # Introduction
 
-Nous souhaitons réalisé l’étude d'une série temporelle et de faire des prévisions sur celle-ci.
+Nous souhaitons réalisé l'**étude d'une série temporelle** et faire des
+prévisions sur celle-ci.
 
-Cette série temporelle est le trafic mensuel d’une Compagnie aérienne de janvier 2011 à août 2019.
+Cette série temporelle est le trafic mensuel d'une Compagnie aérienne de
+janvier 2011 à août 2019.
 
-Nos prévisions portent sur les 8 mois de l’année 2019
+Nos prévisions portent sur les 8 mois de l'année 2019
 
 # Représentation graphique de la série.
 
 ## Import des données
 
-Import de la base, on select que la colonne des valeurs
+Import de la base, on sélectionne la colonne des valeurs
+
 ```{r}
 library(readr)
 data <- read_delim("Trafic-voyageurs.csv", 
     delim = ";", locale = locale(encoding = "ISO-8859-1"))
 ```
+
 ```{r}
 summary(data)
 ```
@@ -100,36 +111,33 @@ data_value <- data[,2]
 
 ## Affichage
 
+Création de la série chronologique :
 
-Création de la série chronologique : 
 ```{r}
 data_ts <- ts(data_value, start=2011, frequency=12)
 plot_1_TimeSeries(data_ts)
 ```
 
-
 ## Séparation jeu de données
-
 
 ```{r}
 #revoir l affichage car ca prend pas en compte tt 2019
 data_ts_train <- window(data_ts, start = c(2011, 1), end = c(2018,12))
 data_ts_test <- window(data_ts, start= c(2019,1), end = c(2019,8))
-data_ts_train
-data_ts_test
 
 plot(data_ts, xlim=c(2011,2020))
 lines(data_ts_test, col=3)
 legend("topleft", lty = 1, col=c(1,3), legend=c("Série chronologique Train", "Série chronologique Test"))
 ```
--> strong trend
--> patern qui se repete, saisonnalité ? 
+
+-\> strong trend -\> patern qui se repete, saisonnalité ?
 
 ## Représentation de la saisonnalité
 
 Analyse de la saisonnalité en superposant chaque année (par mois):
 
--> en supprimant la tendance on voit bien la saisonnalité => saisonnalité régulière
+-\> en supprimant la tendance on voit bien la saisonnalité =\>
+saisonnalité régulière
 
 ```{r}
 ggseasonplot(data_ts)
@@ -139,11 +147,8 @@ ggseasonplot(data_ts_without_trend)
 
 ## Représentation des décompositions possibles
 
-DECOMPOSITION : 
-additive / Multiplicative 
-Ts = Trend + Seasonal + Random /
-Ts = Trend * Seasonal * Random
-
+DECOMPOSITION : additive / Multiplicative Ts = Trend + Seasonal + Random
+/ Ts = Trend \* Seasonal \* Random
 
 ```{r}
 decomposed_data <- decompose(data_ts_train, type="additive")
@@ -154,115 +159,182 @@ plot(decomposed_data$random)
 boxplot(data_ts ~ cycle(data_ts))
 ```
 
--> on distingue des saisonnalités => faire régression ca n'a pas de sens 
-                                  => modèle de Buys Ballot 
+-\> on distingue des saisonnalités =\> faire régression ca n'a pas de
+sens =\> modèle de Buys Ballot
 
--> bonne repartition du bruit
--> quelques outliers
+-\> bonne repartition du bruit -\> quelques outliers
 
 ```{r}
 checkresiduals(remainder(decomposed_data))
 ```
 
+On a tendances + saisonnalité
 
-On a tendances + saisonnalité 
+# Etude du Modèle de Buys-Ballot
 
-# Etude du Modèle de Buys-Ballot 
+## Modèle
 
-## Modèle 
+<https://mpra.ub.uni-muenchen.de/77718/1/MPRA_paper_77718.pdf> page 175
 
-https://mpra.ub.uni-muenchen.de/77718/1/MPRA_paper_77718.pdf page 175
+L'approche de BUYS-BALLOT consiste à introduire des variables
+indicatrices correspondant à chaque saison définit par le cycle
+d'observation. Pour les données trimestrielles, on intègre 4 variables
+indicatrices. Et pour les données mensuelles, on intègre 12 variables
+indicatrices.
 
-
-L’approche de BUYS-BALLOT consiste à introduire des variables indicatrices
-correspondant à chaque saison définit par le cycle d'observation. Pour les données
-trimestrielles, on intègre 4 variables indicatrices. Et pour les données mensuelles, on
-intègre 12 variables indicatrices.
-
-Le modèle doit alors être estimé (sans constante) avec ces variables indicatrices.
+Le modèle doit alors être estimé (sans constante) avec ces variables
+indicatrices.
 
 ## Prédiction des valeurs de 2019
 
 Préparation des données
+
 ```{r}
 Annees=time(data_ts_train)
 ts_DataFrame =data.frame(trafic=data_ts_train,X=as.numeric(Annees))
 ```
+
 Création du modèle
+
 ```{r}
 Regression <- lm(trafic~X,data = ts_DataFrame)
 ```
 
-la tendance
-Prédiction sur les données futurs.
+$Xt = Zt + St + \mu t$
+
+La tendance Prédiction sur les données futurs.
+
 ```{r}
 tendance=predict(Regression)
 Annees=as.numeric(Annees)
-futur=seq(max(Annees)+1/12,length=36,by=1/12)  
-tendance2=predict(Regression, newdata=data.frame(X=futur)) 
+AnneeMoisNumeric=seq(max(Annees)+1/12,length=36,by=1/12)  
+tendance2=predict(Regression, newdata=data.frame(X=AnneeMoisNumeric)) 
 ```
-
 
 ```{r}
 ts_DataFrame$trafic_residual <- residuals(Regression)
 ```
 
-Définissons le mois 
+Définissons le mois
+
 ```{r}
 ts_DataFrame$mois <- round(ts_DataFrame$X - trunc(ts_DataFrame$X),digit=4)
 ```
 
 Création du 2nd modèle avec les mois
+
 ```{r}
 Regression2 =lm(trafic_residual~0+as.factor(mois),data=ts_DataFrame)
 ```
 
 Prédiction de la saisonnalité
+
 ```{r}
 prediction2 =predict(Regression2)
 ```
 
 Prédiction sur les mois
+
 ```{r}
-moisfutur= round(futur-trunc(futur),4)
-Prediction3 =predict( Regression2, newdata= data.frame(mois=moisfutur))
+MoisNumeric= round(AnneeMoisNumeric - trunc(AnneeMoisNumeric
+                     ),4)
+Prediction3 =predict( Regression2, newdata= data.frame(mois=MoisNumeric))
 
 ```
 
 Calculons une région de confiance avec l'erreur d'ajustement
+
 ```{r}
-E=residuals(Regression2)
-hist(E)
-1.96*sqrt(var(E))
+ResidusRegression2=residuals(Regression2)
+hist(ResidusRegression2)
+1.96*sqrt(var(ResidusRegression2))
 ```
+
 Le bruit est-il auto corrélé ?
-```{r}
-plot(acf(E))
-```
-
-
 
 ```{r}
-Buys_ballot_plot <- plot(data_ts_train) 
-lines(Annees,tendance,col="blue",lwd=1)  
-lines(futur,tendance2,col="red")
-lines(Annees,tendance+prediction2,col="green",lwd=1)
-
-
-lines(futur,tendance2+Prediction3,col="blue")
-
- polygon(c(futur,rev(futur)),
- c(tendance2+Prediction3-1.96*sqrt(var(E)),
- rev(tendance2+Prediction3+1.96*sqrt(var(E)))),
- col="purple",border=NA)
+plot(acf(ResidusRegression2))
 ```
- Nous avons réussi à ajuster une droite de régression.
- Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
+
+Affichage de la tendance
+
+```{r warning=FALSE}
+Buys_ballot_plot_tendance <- plot(data_ts,
+                         main = "Application du modèle de Buys_Ballot",
+                         xlab = "Années",
+                         ylab = "Nombre de Voyageurs") 
+
+#droite de tendance
+lines(Annees,tendance,col="blue",lwd=2)  
+
+#prédiction de la tendance futur
+lines(AnneeMoisNumeric,tendance2,col="red")
+
+
+```
+
+Affichage du modèle de Buys Ballot
+
+```{r}
+
+Buys_ballot_plot <- plot(data_ts,
+                         main = "Application du modèle de Buys_Ballot",
+                         xlab = "Années",
+                         ylab = "Nombre de Voyageurs") 
+
+
+
+#prédiction du modèle de Buys ballot
+lines(Annees,tendance+prediction2,col="blue",lwd=2)
+
+#Interval de confiance
+ polygon(c(AnneeMoisNumeric,rev(AnneeMoisNumeric)),
+ c(tendance2+Prediction3-1.96*sqrt(var(ResidusRegression2)),
+ rev(tendance2+Prediction3+1.96*sqrt(var(ResidusRegression2)))),
+ col="cadetblue1",border=NA)
+ 
+ #Prediction des valeurs
+ lines(AnneeMoisNumeric,tendance2+Prediction3,col="blue",lwd=2)
  
  
+ lines(data_ts_test,col="black",lwd=3)
+```
+
+Affichage de la prédiction sur les 8 mois de 2020
+
+```{r}
+
+Buys_ballot_plot <- plot(data_ts_test,
+                         main = "Application du modèle de Buys_Ballot",
+                         xlab = "Années",
+                         ylab = "Nombre de Voyageurs") 
+
+
+
+#prédiction du modèle de Buys ballot
+lines(Annees,tendance+prediction2,col="blue",lwd=2)
+
+#Interval de confiance
+ polygon(c(AnneeMoisNumeric,rev(AnneeMoisNumeric)),
+ c(tendance2+Prediction3-1.96*sqrt(var(ResidusRegression2)),
+ rev(tendance2+Prediction3+1.96*sqrt(var(ResidusRegression2)))),
+ col="cadetblue1",border=NA)
+ 
+ #Prediction des valeurs
+ lines(AnneeMoisNumeric,tendance2+Prediction3,col="blue",lwd=2)
+ 
+ 
+ lines(data_ts_test,col="black",lwd=3)
+```
+
+Nous avons réussi à ajuster une droite de régression. on remarque que la
+prédiction semble bien correspondre à la réalité si on fait abstraction
+du dernier mois où le nombre de voyageurs a bien plus chuté que la
+prédiction du modèle de Buys-Balot.
+
+Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
 ## Comparaison avec les valeurs observées
-
 
 # Lissage moyenne mobile
 
@@ -272,25 +344,23 @@ Mettre belle formule en latex ici
 
 ## Choix Moyenne mobiles
 
-```{r}
-
-```
-
-
-## Conservation & Annulation 
-
-
-
-
+## Conservation & Annulation
 
 # Lissage exponentielle
 
-## Modèles espace-état 
+## Modèles espace-état
 
-- meanf : Average Method : prend la valeur moyenne de toute les observations pour toutes les prédictions, 
-- naive : Naive Method : prend la dernière observation pour toutes les prédictions,
-- drift : Drift Method : prend la première et la dernière observations et trace une lignes entre les deux, on utilise la courbe pour les prédictions,
-- snaive : Seasonal Naive Forecast : Prend la dernière valeur de la saison précédente comme prédiction (ex : sept 2018 = sep 2019 + erreur)
+-   meanf : Average Method : prend la valeur moyenne de toute les
+    observations pour toutes les prédictions,
+-   naive : Naive Method : prend la dernière observation pour toutes les
+    prédictions,
+-   drift : Drift Method : prend la première et la dernière observations
+    et trace une lignes entre les deux, on utilise la courbe pour les
+    prédictions,
+-   snaive : Seasonal Naive Forecast : Prend la dernière valeur de la
+    saison précédente comme prédiction (ex : sept 2018 = sep 2019 +
+    erreur)
+
 ```{r}
 library(forecast)
 mean <- meanf(data_ts_train, h=8)
@@ -316,27 +386,20 @@ lines(data_ts_test, col = 6, lty=1, lwd=3)
 
 ```
 
+On regarde : MAE : Mean Absolute Error : RMSE : Root Mean Squarred Error
+: MASE : Mean Absolute Scaled Error : MAPE : Mean Absolute Percentage
+Error :
 
-On regarde :
-MAE : Mean Absolute Error : 
-RMSE : Root Mean Squarred Error :
-MASE : Mean Absolute Scaled Error :
-MAPE : Mean Absolute Percentage Error :
+res = pred - val MAE = sum(abs(res))/length(val) RSS = sum(res\^2) MSE =
+RSS/length(val) RMSE = sqrt(MSE)
 
-
-res = pred - val
-MAE = sum(abs(res))/length(val)
-RSS = sum(res^2)
-MSE = RSS/length(val)
-RMSE = sqrt(MSE)
-    
-
-La plus populaire est la MAPE 
+La plus populaire est la MAPE
 
 MAPE(y_pred, y_true)
 
-MAPE = (1/n) * Σ(|actual – forecast| / |actual|) * 100
-"a MAPE value of 6% means that the average difference between the forecasted value and the actual value is 6%" 
+MAPE = (1/n) \* Σ(\|actual -- forecast\| / \|actual\|) \* 100 "a MAPE
+value of 6% means that the average difference between the forecasted
+value and the actual value is 6%"
 
 ```{r}
 print(summary(mean))
@@ -366,9 +429,6 @@ accuracy(snaivem, data_ts_test)
 
 ```
 
-
-
-
 ## Lissage simple
 
 ```{r}
@@ -387,10 +447,10 @@ predict_value_se <- df_se$`Point Forecast`
 MAPE(predict_value_se, data_ts_test)*100
 ```
 
-
 ## Optimisation du modèle
 
-Fit Exponential Smoothing model -> trouve le meilleur lissage expo
+Fit Exponential Smoothing model -\> trouve le meilleur lissage expo
+
 ```{r}
 fit_ets <- ets(data_ts_train) 
 print(summary(fit_ets))
@@ -443,8 +503,3 @@ MAPE(predict_value_arima, data_ts_test)*100
 
 
 ```
-
-
-
-
-
