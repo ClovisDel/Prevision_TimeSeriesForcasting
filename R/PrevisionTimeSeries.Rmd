@@ -6,7 +6,11 @@ author:
 - Charles Vitry
 date:
 output:
-  html_notebook
+  html_notebook:
+    theme: cerulean
+    number_sections: no
+    toc: yes
+    toc_float: true
 ---
 <style type="text/css">
 
@@ -179,6 +183,84 @@ Le modèle doit alors être estimé (sans constante) avec ces variables indicatr
 
 ## Prédiction des valeurs de 2019
 
+Préparation des données
+```{r}
+Annees=time(data_ts_train)
+ts_DataFrame =data.frame(trafic=data_ts_train,X=as.numeric(Annees))
+```
+Création du modèle
+```{r}
+Regression <- lm(trafic~X,data = ts_DataFrame)
+```
+
+la tendance
+Prédiction sur les données futurs.
+```{r}
+tendance=predict(Regression)
+Annees=as.numeric(Annees)
+futur=seq(max(Annees)+1/12,length=36,by=1/12)  
+tendance2=predict(Regression, newdata=data.frame(X=futur)) 
+```
+
+
+```{r}
+ts_DataFrame$trafic_residual <- residuals(Regression)
+```
+
+Définissons le mois 
+```{r}
+ts_DataFrame$mois <- round(ts_DataFrame$X - trunc(ts_DataFrame$X),digit=4)
+```
+
+Création du 2nd modèle avec les mois
+```{r}
+Regression2 =lm(trafic_residual~0+as.factor(mois),data=ts_DataFrame)
+```
+
+Prédiction de la saisonnalité
+```{r}
+prediction2 =predict(Regression2)
+```
+
+Prédiction sur les mois
+```{r}
+moisfutur= round(futur-trunc(futur),4)
+Prediction3 =predict( Regression2, newdata= data.frame(mois=moisfutur))
+
+```
+
+Calculons une région de confiance avec l'erreur d'ajustement
+```{r}
+E=residuals(Regression2)
+hist(E)
+1.96*sqrt(var(E))
+```
+Le bruit est-il auto corrélé ?
+```{r}
+plot(acf(E))
+```
+
+
+
+```{r}
+Buys_ballot_plot <- plot(data_ts_train) 
+lines(Annees,tendance,col="blue",lwd=1)  
+lines(futur,tendance2,col="red")
+lines(Annees,tendance+prediction2,col="green",lwd=1)
+
+
+lines(futur,tendance2+Prediction3,col="blue")
+
+ polygon(c(futur,rev(futur)),
+ c(tendance2+Prediction3-1.96*sqrt(var(E)),
+ rev(tendance2+Prediction3+1.96*sqrt(var(E)))),
+ col="purple",border=NA)
+```
+ Nous avons réussi à ajuster une droite de régression.
+ Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
+ 
+ 
+
 ## Comparaison avec les valeurs observées
 
 
@@ -186,10 +268,20 @@ Le modèle doit alors être estimé (sans constante) avec ces variables indicatr
 
 ## Définition
 
+Mettre belle formule en latex ici
+
 ## Choix Moyenne mobiles
+
+```{r}
+
+```
 
 
 ## Conservation & Annulation 
+
+
+
+
 
 # Lissage exponentielle
 
