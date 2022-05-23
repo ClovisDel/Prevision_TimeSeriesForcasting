@@ -6,12 +6,7 @@ author:
 - Charles Vitry
 date:
 output:
-  rmarkdown::html_document:
-    theme: cerulean
-    number_sections: no
-    toc: yes
-    toc_depth: 5
-    toc_float: true
+  html_notebook
 ---
 <style type="text/css">
 
@@ -81,6 +76,10 @@ Cette série temporelle est le trafic mensuel d’une Compagnie aérienne de jan
 
 Nos prévisions portent sur les 8 mois de l’année 2019
 
+# Représentation graphique de la série.
+
+## Import des données
+
 Import de la base, on select que la colonne des valeurs
 ```{r}
 library(readr)
@@ -95,6 +94,8 @@ summary(data)
 data_value <- data[,2]
 ```
 
+## Affichage
+
 
 Création de la série chronologique : 
 ```{r}
@@ -103,7 +104,7 @@ plot_1_TimeSeries(data_ts)
 ```
 
 
-
+## Séparation jeu de données
 
 
 ```{r}
@@ -120,6 +121,8 @@ legend("topleft", lty = 1, col=c(1,3), legend=c("Série chronologique Train", "S
 -> strong trend
 -> patern qui se repete, saisonnalité ? 
 
+## Représentation de la saisonnalité
+
 Analyse de la saisonnalité en superposant chaque année (par mois):
 
 -> en supprimant la tendance on voit bien la saisonnalité => saisonnalité régulière
@@ -130,6 +133,7 @@ data_ts_without_trend = diff(data_ts)
 ggseasonplot(data_ts_without_trend)
 ```
 
+## Représentation des décompositions possibles
 
 DECOMPOSITION : 
 additive / Multiplicative 
@@ -159,12 +163,12 @@ checkresiduals(remainder(decomposed_data))
 
 On a tendances + saisonnalité 
 
+# Etude du Modèle de Buys-Ballot 
 
-
-
-BUYS BALLOT : 
+## Modèle 
 
 https://mpra.ub.uni-muenchen.de/77718/1/MPRA_paper_77718.pdf page 175
+
 
 L’approche de BUYS-BALLOT consiste à introduire des variables indicatrices
 correspondant à chaque saison définit par le cycle d'observation. Pour les données
@@ -173,45 +177,23 @@ intègre 12 variables indicatrices.
 
 Le modèle doit alors être estimé (sans constante) avec ces variables indicatrices.
 
+## Prédiction des valeurs de 2019
+
+## Comparaison avec les valeurs observées
 
 
+# Lissage moyenne mobile
+
+## Définition
+
+## Choix Moyenne mobiles
 
 
-#########################################################
-########################################################
+## Conservation & Annulation 
 
+# Lissage exponentielle
 
-FORECAST : 
-
-
-```{r}
-
-
-
-```
-
-
-
-
-
-```{r}
-
-
-
-
-```
-
-
-
-
-
-
-
-
-#############
-Basic Models 
-#############
-
+## Modèles espace-état 
 
 - meanf : Average Method : prend la valeur moyenne de toute les observations pour toutes les prédictions, 
 - naive : Naive Method : prend la dernière observation pour toutes les prédictions,
@@ -295,9 +277,7 @@ accuracy(snaivem, data_ts_test)
 
 
 
-#############
-Simple exponential smoothing
-#############
+## Lissage simple
 
 ```{r}
 fcst_se <- ses(data_ts_train, h = 8)
@@ -315,18 +295,10 @@ predict_value_se <- df_se$`Point Forecast`
 MAPE(predict_value_se, data_ts_test)*100
 ```
 
-```{r}
 
+## Optimisation du modèle
 
-```
-
-
-
-
-#############
 Fit Exponential Smoothing model -> trouve le meilleur lissage expo
-#############
-
 ```{r}
 fit_ets <- ets(data_ts_train) 
 print(summary(fit_ets))
@@ -347,11 +319,7 @@ MAPE(predict_value_ets, data_ts_test)*100
 
 ```
 
-
-
-#############
-Fit an ARIMA model 
-#############
+## Modèle Arima Automatique
 
 ```{r}
 # retourne les meilleurs paramètres 
@@ -384,30 +352,7 @@ MAPE(predict_value_arima, data_ts_test)*100
 
 ```
 
-```{r}
 
-
-```
-
-```{r}
-
-
-```
-
-```{r}
-
-
-```
-
-```{r}
-
-
-```
-
-```{r}
-
-
-```
 
 
 
