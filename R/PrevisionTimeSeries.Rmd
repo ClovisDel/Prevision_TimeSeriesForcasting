@@ -77,6 +77,8 @@ require(ggplot2)
 if(!require(fpp2)) install.packages("tm", repos = "http://cran.us.r-project.org")
 require(fpp2)
 
+if(!require(TSstudio)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(TSstudio)
 ```
 
 # Introduction
@@ -114,6 +116,7 @@ data_value <- data[,2]
 Création de la série chronologique :
 
 ```{r}
+library(TSstudio)
 data_ts <- ts(data_value, start=2011, frequency=12)
 plot_1_TimeSeries(data_ts)
 ```
@@ -130,13 +133,13 @@ lines(data_ts_test, col=3)
 legend("topleft", lty = 1, col=c(1,3), legend=c("Série chronologique Train", "Série chronologique Test"))
 ```
 
--\> strong trend -\> patern qui se repete, saisonnalité ?
+-> strong trend -> patern qui se repete, saisonnalité ?
 
 ## Représentation de la saisonnalité
 
 Analyse de la saisonnalité en superposant chaque année (par mois):
 
--\> en supprimant la tendance on voit bien la saisonnalité =\>
+-> en supprimant la tendance on voit bien la saisonnalité =>
 saisonnalité régulière
 
 ```{r}
@@ -159,16 +162,103 @@ plot(decomposed_data$random)
 boxplot(data_ts ~ cycle(data_ts))
 ```
 
--\> on distingue des saisonnalités =\> faire régression ca n'a pas de
-sens =\> modèle de Buys Ballot
+-> on distingue des saisonnalités => faire régression ca n'a pas de sens
+=> modèle de Buys Ballot
 
--\> bonne repartition du bruit -\> quelques outliers
+-> bonne repartition du bruit -> quelques outliers
 
 ```{r}
 checkresiduals(remainder(decomposed_data))
 ```
 
 On a tendances + saisonnalité
+
+
+# Modèles espace-état
+
+-   meanf : Average Method : prend la valeur moyenne de toute les
+    observations pour toutes les prédictions,
+-   naive : Naive Method : prend la dernière observation pour toutes les
+    prédictions,
+-   drift : Drift Method : prend la première et la dernière observations
+    et trace une lignes entre les deux, on utilise la courbe pour les
+    prédictions,
+-   snaive : Seasonal Naive Forecast : Prend la dernière valeur de la
+    saison précédente comme prédiction (ex : sept 2018 = sep 2019 +
+    erreur)
+
+```{r}
+library(forecast)
+mean <- meanf(data_ts_train, h=8)
+naivem <- naive(data_ts_train, h=8)
+driftm <- rwf(data_ts_train, h=8, drif=T)
+snaivem <- snaive(data_ts_train, h=8)
+```
+
+```{r}
+plot(mean, plot.conf = F, main="")
+lines(naivem$mean, col=2, lty=1)
+lines(driftm$mean, col=5, lty=1)
+lines(snaivem$mean, col = 4, lty=1)
+legend("topleft", lty=1, col=c(1,2,3,4), legend=c("Mean Method", "Naive Method", "Drif Method", "Seasonal Naive"))
+
+
+#comparaison :
+plot(snaivem, plot.conf = F, main="")
+lines(data_ts_test, col = 6, lty=1, lwd=3)
+
+plot(driftm, plot.conf = F, main="")
+lines(data_ts_test, col = 6, lty=1, lwd=3)
+
+```
+
+On regarde : MAE : Mean Absolute Error : RMSE : Root Mean Squarred Error
+
+:   MASE : Mean Absolute Scaled Error : MAPE : Mean Absolute Percentage
+    Error :
+
+res = pred - val MAE = sum(abs(res))/length(val) RSS = sum(res\^2) MSE =
+RSS/length(val) RMSE = sqrt(MSE)
+
+La plus populaire est la MAPE
+
+MAPE(y_pred, y_true)
+
+$MAPE = (1/n) \* Σ(\|actual -- forecast\| / \|actu0al\|) \* 10 
+
+"a MAPE value of 6% means that the average difference between the forecasted
+value and the actual value is 6%"
+
+```{r}
+print(summary(mean))
+checkresiduals(mean)
+accuracy(mean, data_ts_test)
+
+```
+
+```{r}
+print(summary(naivem))
+checkresiduals(naivem)
+accuracy(naivem, data_ts_test)
+
+```
+
+```{r}
+print(summary(driftm))
+checkresiduals(driftm)
+accuracy(driftm, data_ts_test)
+
+```
+
+```{r}
+print(summary(snaivem))
+checkresiduals(snaivem)
+accuracy(snaivem, data_ts_test)
+
+```
+
+
+
 
 # Etude du Modèle de Buys-Ballot
 
@@ -187,7 +277,7 @@ indicatrices.
 
 ## Prédiction des valeurs de 2019
 
-Préparation des données
+Préparation des données.
 
 ```{r}
 Annees=time(data_ts_train)
@@ -336,6 +426,9 @@ Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
 ## Comparaison avec les valeurs observées
 
+
+
+
 # Lissage moyenne mobile
 
 ## Définition
@@ -346,88 +439,10 @@ Mettre belle formule en latex ici
 
 ## Conservation & Annulation
 
+
+
+
 # Lissage exponentielle
-
-## Modèles espace-état
-
--   meanf : Average Method : prend la valeur moyenne de toute les
-    observations pour toutes les prédictions,
--   naive : Naive Method : prend la dernière observation pour toutes les
-    prédictions,
--   drift : Drift Method : prend la première et la dernière observations
-    et trace une lignes entre les deux, on utilise la courbe pour les
-    prédictions,
--   snaive : Seasonal Naive Forecast : Prend la dernière valeur de la
-    saison précédente comme prédiction (ex : sept 2018 = sep 2019 +
-    erreur)
-
-```{r}
-library(forecast)
-mean <- meanf(data_ts_train, h=8)
-naivem <- naive(data_ts_train, h=8)
-driftm <- rwf(data_ts_train, h=8, drif=T)
-snaivem <- snaive(data_ts_train, h=8)
-```
-
-```{r}
-plot(mean, plot.conf = F, main="")
-lines(naivem$mean, col=2, lty=1)
-lines(driftm$mean, col=5, lty=1)
-lines(snaivem$mean, col = 4, lty=1)
-legend("topleft", lty=1, col=c(1,2,3,4), legend=c("Mean Method", "Naive Method", "Drif Method", "Seasonal Naive"))
-
-
-#comparaison :
-plot(snaivem, plot.conf = F, main="")
-lines(data_ts_test, col = 6, lty=1, lwd=3)
-
-plot(driftm, plot.conf = F, main="")
-lines(data_ts_test, col = 6, lty=1, lwd=3)
-
-```
-
-On regarde : MAE : Mean Absolute Error : RMSE : Root Mean Squarred Error
-: MASE : Mean Absolute Scaled Error : MAPE : Mean Absolute Percentage
-Error :
-
-res = pred - val MAE = sum(abs(res))/length(val) RSS = sum(res\^2) MSE =
-RSS/length(val) RMSE = sqrt(MSE)
-
-La plus populaire est la MAPE
-
-MAPE(y_pred, y_true)
-
-MAPE = (1/n) \* Σ(\|actual -- forecast\| / \|actual\|) \* 100 "a MAPE
-value of 6% means that the average difference between the forecasted
-value and the actual value is 6%"
-
-```{r}
-print(summary(mean))
-checkresiduals(mean)
-accuracy(mean, data_ts_test)
-
-```
-
-```{r}
-print(summary(naivem))
-checkresiduals(naivem)
-accuracy(naivem, data_ts_test)
-
-```
-
-```{r}
-print(summary(driftm))
-checkresiduals(driftm)
-accuracy(driftm, data_ts_test)
-
-```
-
-```{r}
-print(summary(snaivem))
-checkresiduals(snaivem)
-accuracy(snaivem, data_ts_test)
-
-```
 
 ## Lissage simple
 
@@ -449,7 +464,7 @@ MAPE(predict_value_se, data_ts_test)*100
 
 ## Optimisation du modèle
 
-Fit Exponential Smoothing model -\> trouve le meilleur lissage expo
+Fit Exponential Smoothing model -> trouve le meilleur lissage expo
 
 ```{r}
 fit_ets <- ets(data_ts_train) 
