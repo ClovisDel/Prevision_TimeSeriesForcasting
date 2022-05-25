@@ -260,6 +260,7 @@ accuracy(snaivem, data_ts_test)
 
 
 
+
 # Etude du Modèle de Buys-Ballot
 
 ## Modèle
@@ -280,7 +281,7 @@ indicatrices.
 Préparation des données.
 
 ```{r}
-Annees=time(data_ts_train)
+Annees=as.numeric(time(data_ts_train))
 ts_DataFrame =data.frame(trafic=data_ts_train,X=as.numeric(Annees))
 ```
 
@@ -296,9 +297,10 @@ La tendance Prédiction sur les données futurs.
 
 ```{r}
 tendance=predict(Regression)
-Annees=as.numeric(Annees)
-AnneeMoisNumeric=seq(max(Annees)+1/12,length=36,by=1/12)  
-tendance2=predict(Regression, newdata=data.frame(X=AnneeMoisNumeric)) 
+
+AnneeMoisNumericFutur=seq(max(Annees)+1/12,length=8,by=1/12)  #les 10 prochains mois
+
+tendance2=predict(Regression, newdata=data.frame(X=AnneeMoisNumericFutur)) 
 ```
 
 ```{r}
@@ -326,7 +328,7 @@ prediction2 =predict(Regression2)
 Prédiction sur les mois
 
 ```{r}
-MoisNumeric= round(AnneeMoisNumeric - trunc(AnneeMoisNumeric
+MoisNumeric= round(AnneeMoisNumericFutur - trunc(AnneeMoisNumericFutur
                      ),4)
 Prediction3 =predict( Regression2, newdata= data.frame(mois=MoisNumeric))
 
@@ -340,11 +342,95 @@ hist(ResidusRegression2)
 1.96*sqrt(var(ResidusRegression2))
 ```
 
-Le bruit est-il auto corrélé ?
+## Auto corrélation de la série temporelle
+
+L'autocorrélation de notre série temporelle correspond à la corrélation
+entre une mesure du trafic $t$ et les mesures précédentes $t - k$ ou les
+mesures suivantes $t + k$.
+
+L'auto covariance d'une variable $Xt$ de moyenne $\mu$ et d'écart type
+$\sigma$ à un décalage $k$ est donné par la formule
+
+$\gamma_k= E((X_t-\mu)(X_{t+k}-\mu))$
+
+On en déduit l'autocorrélation correspondante :
+
+$\rho_k=\frac{\gamma_k}{\sigma^2}$
+
+Affichons les autocorrélations de la séries grâce à un corrélogramme
+
+```{r}
+ACF_Sur_Valeurs_Predites <- acf(Prediction3)
+```
+
+Il est normal que la série soit autocorrélé totalement à elle avec un
+décalage nulle.
+
+On observe une corrélation forte (0.66) avec un décalage (lag) de 12,
+cela correspond bien à une saisonnalité annuelle.
+
+```{r}
+print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13,])
+```
+
+Recalculons la valeur d'auto-corrélation obtenu en appliquant la formule.
+
+Observons l'application de la formule, en choisissant un
+décalage de 12
+
+```{r}
+#Constantes
+Nombre_Observations=104
+decalage=12
+
+#Estimations
+moyenneMu=mean(Prediction3)
+sdSigma=sd(Prediction3)
+
+
+Serie1=Prediction3[(decalage+1): 104   ]
+Serie2=Prediction3[   1 :(104-decalage)]
+
+GammaDecalage12=mean((Serie1-moyenneMu)*(Serie2-moyenneMu))*((Nombre_Observations-decalage)/(Nombre_Observations))
+
+RhoDecalage12=GammaDecalage12/(sdSigma^2)
+RhoDecalage12
+```
+
+Le résultat obtenu est correct. La corrélation avec un décalage de 12 est donc très forte.
+
+
+
+la deuxième plus forte corrélation est obsersé avec un décalage de 5,
+observons cela graphiquement
+
+```{r}
+plot  ( 1:length(Prediction3),   Prediction3,type="l")
+points((1:length(Prediction3))-5,Prediction3,type="l",col="red")
+```
+
+Cette corrélation est peu pertinente.
+
+
+
+```{r}
+print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13,])
+```
+
+Après avoir étudier les auto-corrélations sur l'ensemble du modèle,
+Observons les auto-corrélations sur les résidus du modèle de Buys-Ballot.
+
+* Texte pour dire que les accidents ne doivent pas être corrélés *
+
 
 ```{r}
 plot(acf(ResidusRegression2))
 ```
+Pour notre modèle, il n'y a aucune auto-corrélation significative. (symbolisé par la ligne bleu)
+
+
+
+## Comparaison des prédictions et des valeurs réelles
 
 Affichage de la tendance
 
@@ -358,7 +444,7 @@ Buys_ballot_plot_tendance <- plot(data_ts,
 lines(Annees,tendance,col="blue",lwd=2)  
 
 #prédiction de la tendance futur
-lines(AnneeMoisNumeric,tendance2,col="red")
+lines(AnneeMoisNumericFutur,tendance2,col="red")
 
 
 ```
@@ -378,13 +464,13 @@ Buys_ballot_plot <- plot(data_ts,
 lines(Annees,tendance+prediction2,col="blue",lwd=2)
 
 #Interval de confiance
- polygon(c(AnneeMoisNumeric,rev(AnneeMoisNumeric)),
+ polygon(c(AnneeMoisNumericFutur,rev(AnneeMoisNumericFutur)),
  c(tendance2+Prediction3-1.96*sqrt(var(ResidusRegression2)),
  rev(tendance2+Prediction3+1.96*sqrt(var(ResidusRegression2)))),
  col="cadetblue1",border=NA)
  
  #Prediction des valeurs
- lines(AnneeMoisNumeric,tendance2+Prediction3,col="blue",lwd=2)
+ lines(AnneeMoisNumericFutur,tendance2+Prediction3,col="blue",lwd=2)
  
  
  lines(data_ts_test,col="black",lwd=3)
@@ -405,17 +491,67 @@ Buys_ballot_plot <- plot(data_ts_test,
 lines(Annees,tendance+prediction2,col="blue",lwd=2)
 
 #Interval de confiance
- polygon(c(AnneeMoisNumeric,rev(AnneeMoisNumeric)),
+ polygon(c(AnneeMoisNumericFutur,rev(AnneeMoisNumericFutur)),
  c(tendance2+Prediction3-1.96*sqrt(var(ResidusRegression2)),
  rev(tendance2+Prediction3+1.96*sqrt(var(ResidusRegression2)))),
  col="cadetblue1",border=NA)
  
  #Prediction des valeurs
- lines(AnneeMoisNumeric,tendance2+Prediction3,col="blue",lwd=2)
+ lines(AnneeMoisNumericFutur,tendance2+Prediction3,col="blue",lwd=2)
  
  
  lines(data_ts_test,col="black",lwd=3)
 ```
+Préparation DataFrame pour affichage ggplot
+```{r}
+DataAffichageGGplot = as.data.frame(data_ts)
+DataAffichageGGplot$Annees = c(Annees, AnneeMoisNumericFutur)
+DataAffichageGGplot$AnneesRound = round(DataAffichageGGplot$Annees)
+DataAffichageGGplot$PredictionTendance = c(tendance ,tendance2)
+DataAffichageGGplot$BuysBalotModele = c(tendance+prediction2,tendance2+Prediction3 )
+
+
+```
+
+
+
+Reproduisons les graphiques avec ggplot2 pour un résultat plus professsionnel.
+```{r warning=FALSE}
+library(ggplot2)
+library(ggthemes)
+
+p <- ggplot(data =DataAffichageGGplot, aes(x = Annees) ) + 
+
+  geom_line(aes(y = trafic ), size = 0.9, alpha = 0.7)+
+
+  #geom_line(aes(y = PredictionTendance), size = 0.6, alpha = 0.85,linetype="twodash" )+
+  
+  geom_line(aes(y = BuysBalotModele), size = 1.2, alpha = 0.6, color = "blue")+
+  labs(title = "Application du modèle de Buys_Ballot",
+       x="Années",
+         y= "Nombre de Voyageurs")+
+theme_fivethirtyeight()+
+  theme(axis.title = element_text(), text = element_text(family = "Rubik")) 
+
+#sur l'année 2019
+p2 <- ggplot(data =DataAffichageGGplot, aes(x = Annees) ) + 
+  geom_line(aes(y = trafic ), size = 1.2, alpha = 0.7)+
+  geom_line(aes(y = BuysBalotModele), size = 1.4, alpha = 0.6, color = "blue")+
+theme_fivethirtyeight()+
+   xlim (2019.0, 2019.583) +
+  ylim (435000, 520000) 
+
+
+#Ajout zoom sur 2019
+p + 
+  annotation_custom(ggplotGrob(p2), xmin = 2015, xmax = 2020, ymin = 50000, ymax = 280000) +
+  geom_rect(aes(xmin = 2015, xmax = 2020, ymin = 50000, ymax = 280000), color='black', linetype='dashed', alpha=0) 
+
+
+
+```
+
+
 
 Nous avons réussi à ajuster une droite de régression. on remarque que la
 prédiction semble bien correspondre à la réalité si on fait abstraction
@@ -425,8 +561,6 @@ prédiction du modèle de Buys-Balot.
 Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
 ## Comparaison avec les valeurs observées
-
-
 
 
 # Lissage moyenne mobile
