@@ -360,13 +360,13 @@ $\rho_k=\frac{\gamma_k}{\sigma^2}$
 Affichons les autocorrélations de la séries grâce à un corrélogramme
 
 ```{r}
-ACF_Sur_Valeurs_Predites <- acf(Prediction3)
+ACF_Sur_Valeurs_Predites <- acf(prediction2)
 ```
 
 Il est normal que la série soit autocorrélé totalement à elle avec un
 décalage nulle.
 
-On observe une corrélation forte (0.66) avec un décalage (lag) de 12,
+On observe une corrélation forte (0.87) avec un décalage (lag) de 12,
 cela correspond bien à une saisonnalité annuelle.
 
 ```{r}
@@ -380,16 +380,16 @@ décalage de 12
 
 ```{r}
 #Constantes
-Nombre_Observations=104
+Nombre_Observations=96
 decalage=12
 
 #Estimations
-moyenneMu=mean(Prediction3)
-sdSigma=sd(Prediction3)
+moyenneMu=mean(prediction2)
+sdSigma=sd(prediction2)
 
 
-Serie1=Prediction3[(decalage+1): 104   ]
-Serie2=Prediction3[   1 :(104-decalage)]
+Serie1=prediction2[(decalage+1): 96   ]
+Serie2=prediction2[   1 :(96-decalage)]
 
 GammaDecalage12=mean((Serie1-moyenneMu)*(Serie2-moyenneMu))*((Nombre_Observations-decalage)/(Nombre_Observations))
 
@@ -405,8 +405,8 @@ la deuxième plus forte corrélation est obsersé avec un décalage de 5,
 observons cela graphiquement
 
 ```{r}
-plot  ( 1:length(Prediction3),   Prediction3,type="l")
-points((1:length(Prediction3))-5,Prediction3,type="l",col="red")
+plot  ( 1:length(prediction2),   prediction2,type="l")
+points((1:length(prediction2))-5,prediction2,type="l",col="red")
 ```
 
 Cette corrélation est peu pertinente.
