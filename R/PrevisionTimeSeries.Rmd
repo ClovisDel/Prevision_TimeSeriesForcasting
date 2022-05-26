@@ -83,6 +83,24 @@ require(TSstudio)
 if(!require(ggthemes)) install.packages("tm", repos = "http://cran.us.r-project.org")
 require(ggthemes)
 
+if(!require(timetk)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(timetk)
+
+
+```
+
+
+
+```{r include=FALSE}
+if(!require(keras)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(keras)
+if(!require(tensorflow)) install.packages("tm", repos = "http://cran.us.r-project.org")
+require(tensorflow)
+library(keras)
+library(tensorflow)
+#install_keras()
+#install_tensorflow(version = "nightly")
+
 ```
 
 # Introduction
@@ -132,8 +150,11 @@ plot_1_TimeSeries(data_ts)
 data_ts_train <- window(data_ts, start = c(2011, 1), end = c(2018,12))
 data_ts_test <- window(data_ts, start= c(2019,1), end = c(2019,8))
 
+names(data)[1] <- "ds"
+names(data)[2] <- "y"
 data_train <- data[1:96,]
 data_test <- data[97:104,]
+
 
 plot(data_ts, xlim=c(2011,2020))
 lines(data_ts_test, col=3)
@@ -671,10 +692,10 @@ MAPE(predict_value_arima, data_ts_test)*100
 A COMMENTER ET A FAIRE FONCTIONNER SURTT (changement de la forme des dates?)
 ```{r}
 library(prophet)
-names(data_train)[1] <- "ds"
+
 data_train$ds <- strptime(as.character(data_train$ds), "%Y-%m-%d ")
-names(data_train)[2] <- "y"
-model_prophet <- prophet(data_train)
+
+#model_prophet <- prophet(data_train)
 
 ```
 
@@ -685,7 +706,180 @@ LSTM
 DeepAR
 N-BEATS
 Temporal Fusion Transformer
+
+
+
+## LSTM 
+
 ```{r}
+
+scale_factors <- c(mean(data$y), sd(data$y))
+scaled_train <- data %>%
+    dplyr::select(y) %>%
+    dplyr::mutate(y = (y - scale_factors[1]) / scale_factors[2])
+scaled_train
+
+
+
+prediction <- 12
+lag <- prediction
+```
+On veut prendre l'année précedente pour apprendre > lag de 12,
+en réalité ca fait 12 - 1 pour avoir à chaque prédiction basée sur 12 valeurs
+
+puis en transforme en array 3D car le modèle LSTM prendre un tensor de format 3D [samples, timesteps, features]
+  samples : nbr d'observation par batchs
+  timesteps : lag
+  features : nbr de valeur predites 
+
+
+```{r}
+scaled_train <- as.matrix(scaled_train)
+ 
+# we lag the data 11 times and arrange that into columns
+x_train_data <- t(sapply(
+    1:(length(scaled_train) - lag - prediction + 1),
+    function(x) scaled_train[x:(x + lag - 1), 1]
+  ))
+ 
+# now we transform it into 3D form
+x_train_arr <- array(
+    data = as.numeric(unlist(x_train_data)),
+    dim = c(
+        nrow(x_train_data),
+        lag,
+        1
+    )
+)
+
+#(x_train_data)
+#length(x_train_arr)
+#head(x_train_arr)
+```
+
+
+```{r}
+y_train_data <- t(sapply(
+    (1 + lag):(length(scaled_train) - prediction + 1),
+    function(x) scaled_train[x:(x + prediction - 1)]
+))
+
+y_train_arr <- array(
+    data = as.numeric(unlist(y_train_data)),
+    dim = c(
+        nrow(y_train_data),
+        prediction,
+        1
+    )
+)
+
+#head(y_train_data)
+#head(y_train_arr)
+```
+```{r}
+x_test <- data$y[(nrow(scaled_train) - prediction + 1):nrow(scaled_train)]
+
+x_test_scaled <- (x_test - scale_factors[1]) / scale_factors[2]
+
+x_pred_arr <- array(
+    data = x_test_scaled,
+    dim = c(
+        1,
+        lag,
+        1
+    )
+)
+
+```
+
+
+```{r}
+lstm_model <- keras_model_sequential()
+
+lstm_model %>%
+  layer_lstm(units = 50, # size of the layer
+       batch_input_shape = c(1, 12, 1), # batch size, timesteps, features
+       return_sequences = TRUE,
+       stateful = TRUE) %>%
+  # fraction of the units to drop for the linear transformation of the inputs
+  layer_dropout(rate = 0.5) %>%
+  layer_lstm(units = 50,
+        return_sequences = TRUE,
+        stateful = TRUE) %>%
+  layer_dropout(rate = 0.5) %>%
+  time_distributed(keras::layer_dense(units = 1))
+
+lstm_model %>%
+    compile(loss = 'mae', optimizer = 'adam', metrics = 'accuracy')
+
+summary(lstm_model)
 
 
 ```
+
+```{r}
+lstm_model %>% fit(
+    x = x_train_arr,
+    y = y_train_arr,
+    batch_size = 1,
+    epochs = 20,
+    verbose = 1,
+    shuffle = FALSE
+)
+```
+
+```{r}
+lstm_forecast <- lstm_model %>%
+    predict(x_pred_arr, batch_size = 1) %>%
+    .[, , 1]
+ 
+# rescale en format basique
+lstm_forecast <- lstm_forecast * scale_factors[2] + scale_factors[1]
+lstm_forecast
+```
+
+
+ X résultats / prédictions par input donc > transforme pour une seule prédiciton
+```{r}
+fitted <- predict(lstm_model, x_train_arr, batch_size = 1) %>%
+     .[, , 1]
+
+if (dim(fitted)[2] > 1) {
+    fit <- c(fitted[, 1], fitted[dim(fitted)[1], 2:dim(fitted)[2]])
+} else {
+    fit <- fitted[, 1]
+}
+
+# rescale final de nos données
+fitted <- fit * scale_factors[2] + scale_factors[1]
+fitted
+fitted <- c(rep(NA, lag), fitted)
+fitted
+length(fitted)
+```
+```{r}
+lstm_forecast <- ts(lstm_forecast,
+    start = c(2019, 1),
+    end = c(2019, 12),
+    frequency = 12
+)
+
+lstm_forecast_display <- window(lstm_forecast, start= c(2019,1), end = c(2019,8))
+
+input_ts <- ts(data$y, 
+    start = c(2011, 1), 
+    end = c(2018, 12), 
+    frequency = 12)
+
+
+lstm_forecast_display
+data_ts_test
+
+plot(input_ts, xlim=c(2011,2020))
+#lines(data_ts_test)
+lines(lstm_forecast_display, col=3)
+
+
+
+```
+
