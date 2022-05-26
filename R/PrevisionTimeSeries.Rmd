@@ -668,7 +668,7 @@ MAPE(predict_value_arima, data_ts_test)*100
 
 ## PROPHET
 
-A COMMENTER 
+A COMMENTER ET A FAIRE FONCTIONNER SURTT (changement de la forme des dates?)
 ```{r}
 library(prophet)
 names(data_train)[1] <- "ds"
@@ -678,6 +678,13 @@ model_prophet <- prophet(data_train)
 
 ```
 
+
+## MODELE POSSIBLE :
+
+LSTM
+DeepAR
+N-BEATS
+Temporal Fusion Transformer
 ```{r}
 
 
