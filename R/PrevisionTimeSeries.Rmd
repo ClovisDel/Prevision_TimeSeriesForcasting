@@ -141,6 +141,8 @@ Création de la série chronologique :
 library(TSstudio)
 data_ts <- ts(data_value, start=2011, frequency=12)
 plot_1_TimeSeries(data_ts)
+
+
 ```
 
 ## Séparation jeu de données
@@ -420,8 +422,13 @@ RhoDecalage12=GammaDecalage12/(sdSigma^2)
 RhoDecalage12
 ```
 
-Le résultat obtenu est correct. La corrélation avec un décalage de 12
-est donc très forte.
+
+
+Le résultat obtenu est correct. L'auto corrélation avec un décalage de 12 est donc très forte.
+
+De plus cette auto corrélation étant positive, cela indique une tendance croissante.
+
+
 
 la deuxième plus forte corrélation est obsersé avec un décalage de 5,
 observons cela graphiquement
@@ -436,6 +443,21 @@ Cette corrélation est peu pertinente.
 ```{r}
 print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13,])
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Après avoir étudier les auto-corrélations sur l'ensemble du modèle,
 Observons les auto-corrélations sur les résidus du modèle de
@@ -689,14 +711,17 @@ MAPE(predict_value_arima, data_ts_test)*100
 
 ## PROPHET
 
+Préparation données
+```{r}
+library(zoo)
+data_train$ds <- as.Date( as.yearmon(time(data_ts_train)))
+```
+
+
+
 A COMMENTER ET A FAIRE FONCTIONNER SURTT (changement de la forme des dates?)
 ```{r}
 library(prophet)
-
-data_train$ds <- strptime(as.character(data_train$ds), "%Y-%m-%d ")
-
-#model_prophet <- prophet(data_train)
-
 ```
 
 
@@ -776,6 +801,8 @@ y_train_arr <- array(
 #head(y_train_data)
 #head(y_train_arr)
 ```
+
+
 ```{r}
 x_test <- data$y[(nrow(scaled_train) - prediction + 1):nrow(scaled_train)]
 
