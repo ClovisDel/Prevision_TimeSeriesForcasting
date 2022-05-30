@@ -883,7 +883,11 @@ fitted
 fitted <- c(rep(NA, lag), fitted)
 fitted
 length(fitted)
+
 ```
+
+
+
 ```{r}
 lstm_forecast <- ts(lstm_forecast,
     start = c(2019, 1),
