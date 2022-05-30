@@ -113,6 +113,7 @@ janvier 2011 à août 2019.
 
 Nos prévisions portent sur les 8 mois de l'année 2019
 
+
 # Représentation graphique de la série.
 
 ## Import des données
@@ -126,16 +127,20 @@ data <- read_delim("Trafic-voyageurs.csv",
 ```
 
 ```{r}
+data_value <- data[,2]
 summary(data)
 ```
 
-```{r}
-data_value <- data[,2]
-```
+## Création de notre série temporelle
 
-## Affichage
+Nous représentons nos données sous forme de série temporelle.
 
-Création de la série chronologique :
+Une série temporelle est un ensemble de métrique mésurée sur des intervalles de temps réguliers.
+
+Création de la série chronologique avec la librairie TSstudio :
+
+- start : année de début,
+- frequency : nbr de valeur par an => on en fréquence mensuelle donc 12
 
 ```{r}
 library(TSstudio)
@@ -162,7 +167,6 @@ plot(data_ts, xlim=c(2011,2020))
 lines(data_ts_test, col=3)
 legend("topleft", lty = 1, col=c(1,3), legend=c("Série chronologique Train", "Série chronologique Test"))
 ```
-
 -> strong trend -> patern qui se repete, saisonnalité ?
 
 ## Représentation de la saisonnalité
@@ -172,6 +176,27 @@ Analyse de la saisonnalité en superposant chaque année (par mois):
 -> en supprimant la tendance on voit bien la saisonnalité =>
 saisonnalité régulière
 
+
+## Analyse de notre série temporelle
+
+Chaque point de notre série temporelle peut être exprimer comme une somme ou un produit de 3 composantes :
+- Saisonnalité (St),
+- Tendance (Tt),
+- Erreur (ϵt),
+
+Yt=St+Tt+ϵt ou Yt=St×Tt×ϵt
+
+La stationnarité d'une série signifique que le processus qui génère la série ne change pas dans le temps. Cela ne veut pas dire que la série ne change pas dans le temps, mais que la façon dont elle change, n'est pas modifié dans le temps. 
+
+Testons si la série est stationnaire : 
+
+```{r}
+library(tseries)
+adf.test(data_ts) #p-value <0.5 => stationnaire
+kpss.test(data_ts)
+
+```
+Donc notre série est bien stationnaire et peut être étudiée facilement.
 ```{r}
 ggseasonplot(data_ts)
 data_ts_without_trend = diff(data_ts)
@@ -722,15 +747,31 @@ data_train$ds <- as.Date( as.yearmon(time(data_ts_train)))
 A COMMENTER ET A FAIRE FONCTIONNER SURTT (changement de la forme des dates?)
 ```{r}
 library(prophet)
+model_prophet <- prophet(data_train)
+forecast_prophet <- make_future_dataframe(model_prophet, periods = 8, freq = 'month')
+AAPLfc <- predict(model_prophet, forecast_prophet)
+tail(AAPLfc[c("ds", "yhat", "yhat_lower", "yhat")])
+
+
+dyplot.prophet(model_prophet, AAPLfc)
+
+
+
+data_pp <- subset(AAPLfc, select=c("yhat"))
+data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
+data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
+
+
+
+plot(data_ts)
+lines(data_pp_ts_w, col="red")
+
+MAPE(data_pp_ts_w, data_ts_test)*100
+
+
 ```
 
 
-## MODELE POSSIBLE :
-
-LSTM
-DeepAR
-N-BEATS
-Temporal Fusion Transformer
 
 
 
