@@ -199,9 +199,24 @@ kpss.test(data_ts)
 Donc notre série est bien stationnaire et peut être étudiée facilement.
 ```{r}
 ggseasonplot(data_ts)
-data_ts_without_trend = diff(data_ts)
-ggseasonplot(data_ts_without_trend)
+
 ```
+
+```{r}
+data_ts_without_trend = diff(data_ts)
+ggseasonplot(data_ts_without_trend)+
+  labs(title = "Trafic sans la tendance",
+       subtitle = "Visualisation de la saisonnalité",
+    x="Mois",
+         y= "Nombre de Voyageurs")+
+  geom_line(size=1.1, alpha = 0.65)+
+    theme_fivethirtyeight()+
+  theme(axis.title = element_text())+
+  scale_color_brewer(palette = "Paired") +
+   theme(axis.title = element_text(), text = element_text(family = "Rubik")) 
+```
+
+
 
 ## Représentation des décompositions possibles
 
@@ -576,7 +591,7 @@ Préparation DataFrame pour affichage ggplot
 DataAffichageGGplot = as.data.frame(data_ts)
 DataAffichageGGplot$Annees = c(Annees, AnneeMoisNumericFutur)
 DataAffichageGGplot$AnneesRound = round(DataAffichageGGplot$Annees)
-DataAffichageGGplot$PredictionTendance = c(tendance ,tendance2)
+DataAffichageGGplot$PredictionTendanceBuysBalot = c(tendance ,tendance2)
 DataAffichageGGplot$BuysBalotModele = c(tendance+prediction2,tendance2+Prediction3 )
 
 
@@ -586,38 +601,7 @@ Reproduisons les graphiques avec ggplot2 pour un résultat plus
 professsionnel.
 
 ```{r warning=FALSE}
-library(ggplot2)
-library(ggthemes)
-
-p <- ggplot(data =DataAffichageGGplot, aes(x = Annees) ) + 
-
-  geom_line(aes(y = trafic ), size = 0.9, alpha = 0.7)+
-
-  #geom_line(aes(y = PredictionTendance), size = 0.6, alpha = 0.85,linetype="twodash" )+
-  
-  geom_line(aes(y = BuysBalotModele), size = 1.2, alpha = 0.6, color = "blue")+
-  labs(title = "Application du modèle de Buys_Ballot",
-       x="Années",
-         y= "Nombre de Voyageurs")+
-theme_fivethirtyeight()+
-  theme(axis.title = element_text(), text = element_text(family = "Rubik")) 
-
-#sur l'année 2019
-p2 <- ggplot(data =DataAffichageGGplot, aes(x = Annees) ) + 
-  geom_line(aes(y = trafic ), size = 1.2, alpha = 0.7)+
-  geom_line(aes(y = BuysBalotModele), size = 1.4, alpha = 0.6, color = "blue")+
-theme_fivethirtyeight()+
-   xlim (2019.0, 2019.583) +
-  ylim (435000, 520000) 
-
-
-#Ajout zoom sur 2019
-p + 
-  annotation_custom(ggplotGrob(p2), xmin = 2015, xmax = 2020, ymin = 50000, ymax = 280000) +
-  geom_rect(aes(xmin = 2015, xmax = 2020, ymin = 50000, ymax = 280000), color='black', linetype='dashed', alpha=0) 
-
-
-
+Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$BuysBalotModele)
 ```
 
 Nous avons réussi à ajuster une droite de régression. on remarque que la
@@ -682,13 +666,23 @@ plot(fcst_ets)
 lines(data_ts_test, col="red")
 
 
+
+
 df_ets = as.data.frame(fcst_ets)
 predict_value_ets = df_ets$`Point Forecast`
 MAPE(predict_value_ets, data_ts_test)*100
 
 ```
+Affichage GGplot
+```{r}
+DataAffichageGGplot$ModeleLissageExponentielle <- c(fcst_ets$fitted ,predict_value_ets )
 
-## Modèle ARMA
+Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleLissageExponentielle)
+```
+
+
+
+## Modèle ARIMA
 
 
 A FAIRE
@@ -732,6 +726,12 @@ predict_value_arima = df_arima$`Point Forecast`
 MAPE(predict_value_arima, data_ts_test)*100
 ```
 
+Affichage GGplot
+```{r}
+DataAffichageGGplot$ModeleArima <-  c(fit_arima$fitted ,predict_value_arima )
+Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleArima)
+```
+
 
 
 ## PROPHET
@@ -743,8 +743,6 @@ data_train$ds <- as.Date( as.yearmon(time(data_ts_train)))
 ```
 
 
-
-A COMMENTER ET A FAIRE FONCTIONNER SURTT (changement de la forme des dates?)
 ```{r}
 library(prophet)
 model_prophet <- prophet(data_train)
@@ -757,21 +755,25 @@ dyplot.prophet(model_prophet, AAPLfc)
 
 
 
-data_pp <- subset(AAPLfc, select=c("yhat"))
-data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
-data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
-
-
-
-plot(data_ts)
-lines(data_pp_ts_w, col="red")
-
-MAPE(data_pp_ts_w, data_ts_test)*100
+# data_pp <- subset(AAPLfc, select=c("yhat"))
+# data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
+# data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
+# 
+# 
+# 
+# plot(data_ts)
+# lines(data_pp_ts_w, col="red")
+# 
+# MAPE(data_pp_ts_w, data_ts_test)*100
 
 
 ```
 
-
+Affichage GGplot
+```{r}
+DataAffichageGGplot$ProphetModele <- AAPLfc$yhat
+Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ProphetModele)
+```
 
 
 
@@ -913,6 +915,7 @@ fitted <- predict(lstm_model, x_train_arr, batch_size = 1) %>%
      .[, , 1]
 
 if (dim(fitted)[2] > 1) {
+  
     fit <- c(fitted[, 1], fitted[dim(fitted)[1], 2:dim(fitted)[2]])
 } else {
     fit <- fitted[, 1]
@@ -953,5 +956,10 @@ lines(lstm_forecast_display, col=3)
 
 
 
+```
+Affichage GGplot
+```{r}
+DataAffichageGGplot$LSTM_Modele <- fitted
+Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$LSTM_Modele)
 ```
 
