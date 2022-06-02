@@ -65,3 +65,55 @@ Affichage_Prediction <- function(Donnees, Modele){
   
 }
 
+
+#L'erreur absolue moyenne en pourcentage
+MAPE <-  function(donnees_reelle,donnees_predites){
+  return (mean(abs((donnees_reelle - donnees_predites)/donnees_reelle))*100)
+}
+
+#R²
+Rcarre <- function(donnees_reelle,donnees_predites){
+  
+  # le carré de leur corrélation 
+  #cor(donnees_reelle,donnees_predites)^2
+  
+  
+  SCR <- sum((donnees_predites - donnees_reelle)^2)
+  
+  SCT <- sum((donnees_reelle - mean(donnees_reelle))^2)
+  
+  #on calcule le R² classique
+  Rcarre <- 1 - (SCR / SCT)
+  
+  return(Rcarre)
+  
+  #                 (SCR)/n-p-1
+  #R² ajusté = 1 -  ____________  
+  #                 (SCT)/n-p
+  # SCT = SCR + SCE => SCR = SCT - SCT
+  #RcarreAjust = 1 - ((SCR)/(nrow(prevision) -22 )/ (SCT/(nrow(prevision)-21)))
+}
+
+CoutDesErreurs <-  function(donnees_reelle,donnees_predites){
+  # En plus : 10 euros
+  #  en moins : 5 euros 
+ differences <-  donnees_reelle - donnees_predites
+ PassagersEnPlus <-  sum(differences[differences>0])
+ PassagersEnMoins <-  sum(differences[differences<0])
+ return( c(PassagersEnPlus,PassagersEnMoins, PassagersEnPlus * 20   +  PassagersEnMoins * -10)  )
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

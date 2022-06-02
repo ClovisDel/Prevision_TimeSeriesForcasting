@@ -1,19 +1,33 @@
 ---
-title: |
+title: 
   
 author: 
 - Clovis Deletre
 - Charles Vitry
 date:
 output:
-  html_notebook:
-    theme: cerulean
-    number_sections: no
-    toc: yes
-    toc_float: true
-editor_options: 
-  markdown: 
-    wrap: 72
+  word_document
+#     bookdown::gitbook:
+#       config:
+# #        sharing:null
+#         search: no
+# documentclass: book
+# bibliography: [book.bib, packages.bib]
+# biblio-style: apalike
+# link-citation: yes
+# #github-repo:
+# description: "Description"
+
+
+always_allow_html: true
+#     :
+#     theme: cerulean
+#     number_sections: no
+#     toc: yes
+#     toc_float: true
+# editor_options: 
+#   markdown: 
+#     wrap: 72
 ---
 
 ```{=html}
@@ -89,8 +103,6 @@ require(timetk)
 
 ```
 
-
-
 ```{r include=FALSE}
 if(!require(keras)) install.packages("tm", repos = "http://cran.us.r-project.org")
 require(keras)
@@ -101,18 +113,17 @@ library(tensorflow)
 #install_keras()
 #install_tensorflow(version = "nightly")
 
+#Set up Font
+windowsFonts("Rubik" = windowsFont("Rubik"))
 ```
 
 # Introduction
 
-Nous souhaitons réalisé l'**étude d'une série temporelle** et faire des
-prévisions sur celle-ci.
+Nous souhaitons réalisé l'**étude d'une série temporelle** et faire des prévisions sur celle-ci.
 
-Cette série temporelle est le trafic mensuel d'une Compagnie aérienne de
-janvier 2011 à août 2019.
+Cette série temporelle est le trafic mensuel d'une Compagnie aérienne de janvier 2011 à août 2019.
 
 Nos prévisions portent sur les 8 mois de l'année 2019
-
 
 # Représentation graphique de la série.
 
@@ -139,8 +150,8 @@ Une série temporelle est un ensemble de métrique mésurée sur des intervalles
 
 Création de la série chronologique avec la librairie TSstudio :
 
-- start : année de début,
-- frequency : nbr de valeur par an => on en fréquence mensuelle donc 12
+-   start : année de début,
+-   frequency : nbr de valeur par an =\> on en fréquence mensuelle donc 12
 
 ```{r}
 library(TSstudio)
@@ -167,28 +178,24 @@ plot(data_ts, xlim=c(2011,2020))
 lines(data_ts_test, col=3)
 legend("topleft", lty = 1, col=c(1,3), legend=c("Série chronologique Train", "Série chronologique Test"))
 ```
--> strong trend -> patern qui se repete, saisonnalité ?
+
+-\> strong trend -\> patern qui se repete, saisonnalité ?
 
 ## Représentation de la saisonnalité
 
 Analyse de la saisonnalité en superposant chaque année (par mois):
 
--> en supprimant la tendance on voit bien la saisonnalité =>
-saisonnalité régulière
-
+-\> en supprimant la tendance on voit bien la saisonnalité =\> saisonnalité régulière
 
 ## Analyse de notre série temporelle
 
-Chaque point de notre série temporelle peut être exprimer comme une somme ou un produit de 3 composantes :
-- Saisonnalité (St),
-- Tendance (Tt),
-- Erreur (ϵt),
+Chaque point de notre série temporelle peut être exprimer comme une somme ou un produit de 3 composantes : - Saisonnalité (St), - Tendance (Tt), - Erreur (ϵt),
 
 Yt=St+Tt+ϵt ou Yt=St×Tt×ϵt
 
-La stationnarité d'une série signifique que le processus qui génère la série ne change pas dans le temps. Cela ne veut pas dire que la série ne change pas dans le temps, mais que la façon dont elle change, n'est pas modifié dans le temps. 
+La stationnarité d'une série signifique que le processus qui génère la série ne change pas dans le temps. Cela ne veut pas dire que la série ne change pas dans le temps, mais que la façon dont elle change, n'est pas modifié dans le temps.
 
-Testons si la série est stationnaire : 
+Testons si la série est stationnaire :
 
 ```{r}
 library(tseries)
@@ -196,7 +203,9 @@ adf.test(data_ts) #p-value <0.5 => stationnaire
 kpss.test(data_ts)
 
 ```
+
 Donc notre série est bien stationnaire et peut être étudiée facilement.
+
 ```{r}
 ggseasonplot(data_ts)
 
@@ -216,12 +225,9 @@ ggseasonplot(data_ts_without_trend)+
    theme(axis.title = element_text(), text = element_text(family = "Rubik")) 
 ```
 
-
-
 ## Représentation des décompositions possibles
 
-DECOMPOSITION : additive / Multiplicative Ts = Trend + Seasonal + Random
-/ Ts = Trend \* Seasonal \* Random
+DECOMPOSITION : additive / Multiplicative Ts = Trend + Seasonal + Random / Ts = Trend \* Seasonal \* Random
 
 ```{r}
 decomposed_data <- decompose(data_ts_train, type="additive")
@@ -232,10 +238,9 @@ plot(decomposed_data$random)
 boxplot(data_ts ~ cycle(data_ts))
 ```
 
--> on distingue des saisonnalités => faire régression ca n'a pas de sens
-=> modèle de Buys Ballot
+-\> on distingue des saisonnalités =\> faire régression ca n'a pas de sens =\> modèle de Buys Ballot
 
--> bonne repartition du bruit -> quelques outliers
+-\> bonne repartition du bruit -\> quelques outliers
 
 ```{r}
 checkresiduals(remainder(decomposed_data))
@@ -245,16 +250,10 @@ On a tendances + saisonnalité
 
 # Modèles espace-état
 
--   meanf : Average Method : prend la valeur moyenne de toute les
-    observations pour toutes les prédictions,
--   naive : Naive Method : prend la dernière observation pour toutes les
-    prédictions,
--   drift : Drift Method : prend la première et la dernière observations
-    et trace une lignes entre les deux, on utilise la courbe pour les
-    prédictions,
--   snaive : Seasonal Naive Forecast : Prend la dernière valeur de la
-    saison précédente comme prédiction (ex : sept 2018 = sep 2019 +
-    erreur)
+-   meanf : Average Method : prend la valeur moyenne de toute les observations pour toutes les prédictions,
+-   naive : Naive Method : prend la dernière observation pour toutes les prédictions,
+-   drift : Drift Method : prend la première et la dernière observations et trace une lignes entre les deux, on utilise la courbe pour les prédictions,
+-   snaive : Seasonal Naive Forecast : Prend la dernière valeur de la saison précédente comme prédiction (ex : sept 2018 = sep 2019 + erreur)
 
 ```{r}
 library(forecast)
@@ -283,11 +282,9 @@ lines(data_ts_test, col = 6, lty=1, lwd=3)
 
 On regarde : MAE : Mean Absolute Error : RMSE : Root Mean Squarred Error
 
-:   MASE : Mean Absolute Scaled Error : MAPE : Mean Absolute Percentage
-    Error :
+:   MASE : Mean Absolute Scaled Error : MAPE : Mean Absolute Percentage Error :
 
-res = pred - val MAE = sum(abs(res))/length(val) RSS = sum(res\^2) MSE =
-RSS/length(val) RMSE = sqrt(MSE)
+res = pred - val MAE = sum(abs(res))/length(val) RSS = sum(res\^2) MSE = RSS/length(val) RMSE = sqrt(MSE)
 
 La plus populaire est la MAPE
 
@@ -295,8 +292,7 @@ MAPE(y_pred, y_true)
 
 \$MAPE = (1/n) \* Σ(\|actual -- forecast\| / \|actu0al\|) \* 10
 
-"a MAPE value of 6% means that the average difference between the
-forecasted value and the actual value is 6%"
+"a MAPE value of 6% means that the average difference between the forecasted value and the actual value is 6%"
 
 ```{r}
 print(summary(mean))
@@ -332,14 +328,9 @@ accuracy(snaivem, data_ts_test)
 
 <https://mpra.ub.uni-muenchen.de/77718/1/MPRA_paper_77718.pdf> page 175
 
-L'approche de BUYS-BALLOT consiste à introduire des variables
-indicatrices correspondant à chaque saison définit par le cycle
-d'observation. Pour les données trimestrielles, on intègre 4 variables
-indicatrices. Et pour les données mensuelles, on intègre 12 variables
-indicatrices.
+L'approche de BUYS-BALLOT consiste à introduire des variables indicatrices correspondant à chaque saison définit par le cycle d'observation. Pour les données trimestrielles, on intègre 4 variables indicatrices. Et pour les données mensuelles, on intègre 12 variables indicatrices.
 
-Le modèle doit alors être estimé (sans constante) avec ces variables
-indicatrices.
+Le modèle doit alors être estimé (sans constante) avec ces variables indicatrices.
 
 ## Prédiction des valeurs de 2019
 
@@ -409,12 +400,9 @@ hist(ResidusRegression2)
 
 ## Auto corrélation de la série temporelle
 
-L'autocorrélation de notre série temporelle correspond à la corrélation
-entre une mesure du trafic $t$ et les mesures précédentes $t - k$ ou les
-mesures suivantes $t + k$.
+L'autocorrélation de notre série temporelle correspond à la corrélation entre une mesure du trafic $t$ et les mesures précédentes $t - k$ ou les mesures suivantes $t + k$.
 
-L'auto covariance d'une variable $Xt$ de moyenne $\mu$ et d'écart type
-$\sigma$ à un décalage $k$ est donné par la formule
+L'auto covariance d'une variable $Xt$ de moyenne $\mu$ et d'écart type $\sigma$ à un décalage $k$ est donné par la formule
 
 $\gamma_k= E((X_t-\mu)(X_{t+k}-\mu))$
 
@@ -428,18 +416,15 @@ Affichons les autocorrélations de la séries grâce à un corrélogramme
 ACF_Sur_Valeurs_Predites <- acf(prediction2)
 ```
 
-Il est normal que la série soit autocorrélé totalement à elle avec un
-décalage nulle.
+Il est normal que la série soit autocorrélé totalement à elle avec un décalage nulle.
 
-On observe une corrélation forte (0.87) avec un décalage (lag) de 12,
-cela correspond bien à une saisonnalité annuelle.
+On observe une corrélation forte (0.87) avec un décalage (lag) de 12, cela correspond bien à une saisonnalité annuelle.
 
 ```{r}
 print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13,])
 ```
 
-Recalculons la valeur d'auto-corrélation obtenu en appliquant la
-formule.
+Recalculons la valeur d'auto-corrélation obtenu en appliquant la formule.
 
 Observons l'application de la formule, en choisissant un décalage de 12
 
@@ -462,16 +447,11 @@ RhoDecalage12=GammaDecalage12/(sdSigma^2)
 RhoDecalage12
 ```
 
-
-
 Le résultat obtenu est correct. L'auto corrélation avec un décalage de 12 est donc très forte.
 
 De plus cette auto corrélation étant positive, cela indique une tendance croissante.
 
-
-
-la deuxième plus forte corrélation est obsersé avec un décalage de 5,
-observons cela graphiquement
+la deuxième plus forte corrélation est obsersé avec un décalage de 5, observons cela graphiquement
 
 ```{r}
 plot  ( 1:length(prediction2),   prediction2,type="l")
@@ -484,24 +464,7 @@ Cette corrélation est peu pertinente.
 print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13,])
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Après avoir étudier les auto-corrélations sur l'ensemble du modèle,
-Observons les auto-corrélations sur les résidus du modèle de
-Buys-Ballot.
+Après avoir étudier les auto-corrélations sur l'ensemble du modèle, Observons les auto-corrélations sur les résidus du modèle de Buys-Ballot.
 
 -   Texte pour dire que les accidents ne doivent pas être corrélés \*
 
@@ -509,8 +472,7 @@ Buys-Ballot.
 plot(acf(ResidusRegression2))
 ```
 
-Pour notre modèle, il n'y a aucune auto-corrélation significative.
-(symbolisé par la ligne bleu)
+Pour notre modèle, il n'y a aucune auto-corrélation significative. (symbolisé par la ligne bleu)
 
 ## Comparaison des prédictions et des valeurs réelles
 
@@ -597,17 +559,13 @@ DataAffichageGGplot$BuysBalotModele = c(tendance+prediction2,tendance2+Predictio
 
 ```
 
-Reproduisons les graphiques avec ggplot2 pour un résultat plus
-professsionnel.
+Reproduisons les graphiques avec ggplot2 pour un résultat plus professsionnel.
 
 ```{r warning=FALSE}
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$BuysBalotModele)
 ```
 
-Nous avons réussi à ajuster une droite de régression. on remarque que la
-prédiction semble bien correspondre à la réalité si on fait abstraction
-du dernier mois où le nombre de voyageurs a bien plus chuté que la
-prédiction du modèle de Buys-Balot.
+Nous avons réussi à ajuster une droite de régression. on remarque que la prédiction semble bien correspondre à la réalité si on fait abstraction du dernier mois où le nombre de voyageurs a bien plus chuté que la prédiction du modèle de Buys-Balot.
 
 Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
@@ -622,11 +580,6 @@ Mettre belle formule en latex ici
 ## Choix Moyenne mobiles
 
 ## Conservation & Annulation
-
-
-
-
-
 
 # Lissage exponentielle
 
@@ -650,7 +603,7 @@ MAPE(predict_value_se, data_ts_test)*100
 
 ## Optimisation du modèle
 
-Fit Exponential Smoothing model -> trouve le meilleur lissage expo
+Fit Exponential Smoothing model -\> trouve le meilleur lissage expo
 
 ```{r}
 fit_ets <- ets(data_ts_train) 
@@ -673,20 +626,18 @@ predict_value_ets = df_ets$`Point Forecast`
 MAPE(predict_value_ets, data_ts_test)*100
 
 ```
+
 Affichage GGplot
+
 ```{r}
 DataAffichageGGplot$ModeleLissageExponentielle <- c(fcst_ets$fitted ,predict_value_ets )
 
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleLissageExponentielle)
 ```
 
-
-
 ## Modèle ARIMA
 
-
 A FAIRE
-
 
 ## Modèle ARIMA / SAMIRA Automatique
 
@@ -694,15 +645,11 @@ ARIMA : AutoRegressive Integrated Moving Average
 
 Le modèle ARIMA est une combinaison du modèle ARMA combiné à une différentiation (le Integrated)
 
-Différentiation = rétirer les tendances 
-  -> tendance linéaire : une différenciation 
-  -> tendance quadradique : deux différenciations 
+Différentiation = rétirer les tendances -\> tendance linéaire : une différenciation -\> tendance quadradique : deux différenciations
 
-Le modèle SARIMA est une combinaison du modèle ARIMA qui prend en compte la composante saisonniaire. 
+Le modèle SARIMA est une combinaison du modèle ARIMA qui prend en compte la composante saisonniaire.
 
-auto.arima prend en compte les saisonnalités, comme on peut le voir dans le modèle selectionné :
-(0,1,1)(0,1,1)[12]
-
+auto.arima prend en compte les saisonnalités, comme on peut le voir dans le modèle selectionné : (0,1,1)(0,1,1)[12]
 
 ```{r}
 # retourne les meilleurs paramètres 
@@ -727,21 +674,20 @@ MAPE(predict_value_arima, data_ts_test)*100
 ```
 
 Affichage GGplot
+
 ```{r}
 DataAffichageGGplot$ModeleArima <-  c(fit_arima$fitted ,predict_value_arima )
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleArima)
 ```
 
-
-
 ## PROPHET
 
 Préparation données
+
 ```{r}
 library(zoo)
 data_train$ds <- as.Date( as.yearmon(time(data_ts_train)))
 ```
-
 
 ```{r}
 library(prophet)
@@ -770,14 +716,13 @@ dyplot.prophet(model_prophet, AAPLfc)
 ```
 
 Affichage GGplot
+
 ```{r}
 DataAffichageGGplot$ProphetModele <- AAPLfc$yhat
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ProphetModele)
 ```
 
-
-
-## LSTM 
+## LSTM
 
 ```{r}
 
@@ -792,14 +737,10 @@ scaled_train
 prediction <- 12
 lag <- prediction
 ```
-On veut prendre l'année précedente pour apprendre > lag de 12,
-en réalité ca fait 12 - 1 pour avoir à chaque prédiction basée sur 12 valeurs
 
-puis en transforme en array 3D car le modèle LSTM prendre un tensor de format 3D [samples, timesteps, features]
-  samples : nbr d'observation par batchs
-  timesteps : lag
-  features : nbr de valeur predites 
+On veut prendre l'année précedente pour apprendre \> lag de 12, en réalité ca fait 12 - 1 pour avoir à chaque prédiction basée sur 12 valeurs
 
+puis en transforme en array 3D car le modèle LSTM prendre un tensor de format 3D [samples, timesteps, features] samples : nbr d'observation par batchs timesteps : lag features : nbr de valeur predites
 
 ```{r}
 scaled_train <- as.matrix(scaled_train)
@@ -825,7 +766,6 @@ x_train_arr <- array(
 #head(x_train_arr)
 ```
 
-
 ```{r}
 y_train_data <- t(sapply(
     (1 + lag):(length(scaled_train) - prediction + 1),
@@ -845,7 +785,6 @@ y_train_arr <- array(
 #head(y_train_arr)
 ```
 
-
 ```{r}
 x_test <- data$y[(nrow(scaled_train) - prediction + 1):nrow(scaled_train)]
 
@@ -861,7 +800,6 @@ x_pred_arr <- array(
 )
 
 ```
-
 
 ```{r}
 lstm_model <- keras_model_sequential()
@@ -908,8 +846,8 @@ lstm_forecast <- lstm_forecast * scale_factors[2] + scale_factors[1]
 lstm_forecast
 ```
 
+X résultats / prédictions par input donc \> transforme pour une seule prédiciton
 
- X résultats / prédictions par input donc > transforme pour une seule prédiciton
 ```{r}
 fitted <- predict(lstm_model, x_train_arr, batch_size = 1) %>%
      .[, , 1]
@@ -929,8 +867,6 @@ fitted
 length(fitted)
 
 ```
-
-
 
 ```{r}
 lstm_forecast <- ts(lstm_forecast,
@@ -957,9 +893,94 @@ lines(lstm_forecast_display, col=3)
 
 
 ```
+
 Affichage GGplot
+
 ```{r}
 DataAffichageGGplot$LSTM_Modele <- fitted
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$LSTM_Modele)
 ```
 
+# Comparaison Modèle
+
+## Choix des indicateurs
+
+Nous devons pouvoir comparer nos modèles entre eux, nous souhaitons pouvoir observer leurs performances globale, ainsi que spécifiquement leurs performances sur le jeu d'entraînement et le jeu de test (les 8 mois de 2019 à prédire).
+
+Nous utiliserons une mesure largement utilisé lors de nos précédents travaux : le $R^2 \in [0 \; ; 1]$ , cette mesure indique la proportion de la variance expliquée par le modèle.
+
+-   0 % le modèle n'explique par la variable Y
+
+-   100 % le modèle explique la variabilité de Y lié à la liaison linéaire des variables explicatives entièrement
+
+Rappelons son explication mathématiques , soit SCE la somme des distances au carré entre chaque valeur prédite par le modèle ${\widehat y_i}$ et la moyenne des réponses $\overline{y}$
+
+$\text{SCE} = \sum_{i=1}^{N}(\hat{y_i} – \overline{y})^2$
+
+Nous obtenons alors la part de dispersion expliquée par le modèle.
+
+Puis, nous calculons la dispersion totale des données nommé SCT
+
+$\text{SCT} = \sum_{i=1}^{N}(y_{i } – \overline{y})^2$
+
+*Avec* $y_i$ *une valeur prise par une variable expliquée*
+
+Nous obtenons alors le R² par la combinaisons des calculs précédents
+
+$R^2 = \frac{SCE}{SCT}$
+
+Pour compléter cette mesure, nous utiliserons donc l'erreur absolue moyenne en pourcentage (MAPE en anglais) Il s'agit de la moyenne des écarts en valeur absolue par rapport aux valeurs observées.
+
+C'est donc un pourcentage et par conséquent un indicateur pratique de comparaison.
+
+**Exemple de mise en production**
+
+Imaginons que l'on utilise nos modèles pour prédire le nombre de voyageurs, si l'on prévoit trop de passagers alors les moyens mis en place pour les accueillir sont partiellement utilisés, il en résulte un coût de 5 euros par passagers.
+
+Si l'on a prédit moins de passagers que la réalité, notre compagnie doit commander en livraison urgente, il en résulte un coût de 10 euros par passagers.
+
+Observons cette mise en production sur nos modèles.
+
+## Calculs des performances
+
+Dans les concerts, chaque individu chante comme une casserole, pourtant la foule chante systématiquement juste, suivant cet intuition réalisons une prédiction qui est une moyennne des différents modèles réalisés.
+
+```{r}
+DataAffichageGGplot$MoyenneDesModele <- rowMeans(DataAffichageGGplot[,5:9])
+```
+
+Performances Modèles
+
+```{r}
+noms_modeles <- c("Buys Ballot ","Lissage exponentielle ","Arima","Prophet","LSTM","Moyenne Des Modèles")
+
+for (x in seq_along(noms_modeles)){
+  print("----------------------------")
+  print(noms_modeles[x])
+  
+  predictionglobale <- DataAffichageGGplot[13:104,4+x]
+  predictionEntrainement <- DataAffichageGGplot[13:96,4+x]
+  predictionTest <- DataAffichageGGplot[97:104,4+x]
+    
+  
+  cat("MAPE globale : ",MAPE(DataAffichageGGplot$trafic[13:104], predictionglobale),"\n")
+cat("R carré globale : ",Rcarre(DataAffichageGGplot$trafic[13:104], predictionglobale),"\n")
+
+cat("MAPE Entrainement : ",MAPE(DataAffichageGGplot$trafic[13:96], predictionEntrainement),"\n")
+cat("R carré Entrainement : ",Rcarre(DataAffichageGGplot$trafic[13:96], predictionEntrainement),"\n")
+
+cat("MAPE Test : ",MAPE(DataAffichageGGplot$trafic[97:104], predictionTest),"\n")
+cat("R carré Test : ",Rcarre(DataAffichageGGplot$trafic[97:104], predictionTest),"\n")
+
+MiseEnProductionDuModele <-  CoutDesErreurs(DataAffichageGGplot$trafic[97:104], predictionTest)
+cat("Nombre de Passagers prévus en plus : ",MiseEnProductionDuModele[1],"\nNombre de Passagers prévus en moins : ",MiseEnProductionDuModele[2],"\nCout des erreurs en Euros : ",MiseEnProductionDuModele[3] )
+
+
+cat("\nDifférence en nbre de voyageurs sur le dernier mois : ",predictionglobale[92] - DataAffichageGGplot$trafic[104],"\n")
+  
+}
+```
+
+## Conclusion
+
+lorem ipsum
