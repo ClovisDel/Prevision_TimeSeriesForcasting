@@ -776,7 +776,7 @@ dyplot.prophet(model_prophet, AAPLfc)
 
 
 data_pp <- subset(AAPLfc, select=c("yhat"))
-data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
+data_pp_ts <- ts(data_pp, start=2011, frequency=12)
 data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
 MAPE(data_pp_ts_w, data_ts_test) #3.2
 # 
