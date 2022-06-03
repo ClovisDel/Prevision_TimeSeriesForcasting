@@ -199,12 +199,12 @@ Testons si la série est stationnaire :
 
 ```{r}
 library(tseries)
-adf.test(data_ts) #p-value <0.5 => stationnaire
+adf.test(data_ts) #p-value <0.5 => on ne rejete pas H0 => non stationnaire
 kpss.test(data_ts)
 
 ```
 
-Donc notre série est bien stationnaire et peut être étudiée facilement.
+Donc notre série est bien non-stationnaire.
 
 ```{r}
 ggseasonplot(data_ts)
@@ -575,11 +575,33 @@ Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
 ## Définition
 
-Mettre belle formule en latex ici
+Une moyenne mobile est un filtre linéaire. Il permet de transformer une série chronologique avec comme but d'annuler une composante (tendance ou saison) pour en laisser les autres invariantes tout en réduisant le bruit. 
+
+Une moyenne mobile en t est définit comme une combinaison linéaire finie des valeurs de la série correspondant à des dates entourant t, c'est donc un lissage de la série. 
 
 ## Choix Moyenne mobiles
 
 ## Conservation & Annulation
+
+```{r}
+library(forecast)
+ma_model <- ma(data_ts_train, order=12, centre=TRUE)
+ma_model
+plot(data_ts_train)
+lines(ma_model, col="blue", lwd=3)
+
+ma_forecast <- forecast(ma_model, h=14)
+ma_forecast
+plot(ma_forecast)
+
+accuracy(ma_forecast, data_ts_test)
+
+```
+
+
+```{r}
+
+```
 
 # Lissage exponentielle
 
@@ -682,15 +704,39 @@ Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleArima)
 
 ## PROPHET
 
-Préparation données
+Prophet est un outil de prévision de série chronologique open-source mis en production par Facebook.
+
+L'idée est décomposer la série temporelle sous la forme : 
+
+y(t) = g(t) + s(t) + h(t) + e(t)
+
+avec respectivement :
+
+- g(t) : la tendance (linéaire ou logistique)
+- s(s) : une ou plusieurs composantes saisonnières (annuelle, hebdomadaire ou            quotidienne)
+- h(t) : l’effet des vacances ou de jours spécifiques qui pourront être paramétrés
+- e(t) : l’erreur, bruit aléatoire qui mesure l’écart entre le modèle et les données réelles
+
+Ce modèle est particulièrement utile quand on a de forte saisonnalités et permet de prendre en compte les vacances (et ses effets) par pays. 
+
+Préparation des données:
+- format des dates 
+- colonne du temps name : ds
+- colonne de la mesure quantitative name : y
 
 ```{r}
+library(prophet)
 library(zoo)
 data_train$ds <- as.Date( as.yearmon(time(data_ts_train)))
 ```
 
+On créer notre modèle et on predit sur les 8 mois de 2019.
+
+On affiche les courbes.
+
+On regarde la valeur de la MAPE : 3.2.
+
 ```{r}
-library(prophet)
 model_prophet <- prophet(data_train)
 forecast_prophet <- make_future_dataframe(model_prophet, periods = 8, freq = 'month')
 AAPLfc <- predict(model_prophet, forecast_prophet)
@@ -701,16 +747,15 @@ dyplot.prophet(model_prophet, AAPLfc)
 
 
 
-# data_pp <- subset(AAPLfc, select=c("yhat"))
-# data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
-# data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
-# 
+data_pp <- subset(AAPLfc, select=c("yhat"))
+data_pp_ts <- ts(data_tttt, start=2011, frequency=12)
+data_pp_ts_w <- window(data_pp_ts, start= c(2019,1), end = c(2019,8))
+MAPE(data_pp_ts_w, data_ts_test) #3.2
 # 
 # 
 # plot(data_ts)
 # lines(data_pp_ts_w, col="red")
-# 
-# MAPE(data_pp_ts_w, data_ts_test)*100
+ 
 
 
 ```
@@ -831,7 +876,7 @@ lstm_model %>% fit(
     y = y_train_arr,
     batch_size = 1,
     epochs = 20,
-    verbose = 1,
+    verbose = 0,
     shuffle = FALSE
 )
 ```
