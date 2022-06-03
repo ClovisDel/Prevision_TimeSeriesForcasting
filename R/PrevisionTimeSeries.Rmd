@@ -213,7 +213,7 @@ ggseasonplot(data_ts)
 
 ```{r}
 data_ts_without_trend = diff(data_ts)
-ggseasonplot(data_ts_without_trend)+
+SeasonPlot <-  ggseasonplot(data_ts_without_trend)+
   labs(title = "Trafic sans la tendance",
        subtitle = "Visualisation de la saisonnalité",
     x="Mois",
@@ -223,6 +223,8 @@ ggseasonplot(data_ts_without_trend)+
   theme(axis.title = element_text())+
   scale_color_brewer(palette = "Paired") +
    theme(axis.title = element_text(), text = element_text(family = "Rubik")) 
+
+SeasonPlot
 ```
 
 ## Représentation des décompositions possibles
@@ -354,7 +356,8 @@ La tendance Prédiction sur les données futurs.
 ```{r}
 tendance=predict(Regression)
 
-AnneeMoisNumericFutur=seq(max(Annees)+1/12,length=8,by=1/12)  #les 10 prochains mois
+#les 8 prochains mois
+AnneeMoisNumericFutur=seq(max(Annees)+1/12,length=8,by=1/12)  
 
 tendance2=predict(Regression, newdata=data.frame(X=AnneeMoisNumericFutur)) 
 ```
@@ -406,11 +409,11 @@ L'auto covariance d'une variable $Xt$ de moyenne $\mu$ et d'écart type $\sigma$
 
 $\gamma_k= E((X_t-\mu)(X_{t+k}-\mu))$
 
-On en déduit l'autocorrélation correspondante :
+On en déduit l'auto-corrélation correspondante :
 
 $\rho_k=\frac{\gamma_k}{\sigma^2}$
 
-Affichons les autocorrélations de la séries grâce à un corrélogramme
+Affichons les auto-corrélations de la séries grâce à un corrélogramme
 
 ```{r}
 ACF_Sur_Valeurs_Predites <- acf(prediction2)
@@ -562,8 +565,29 @@ DataAffichageGGplot$BuysBalotModele = c(tendance+prediction2,tendance2+Predictio
 Reproduisons les graphiques avec ggplot2 pour un résultat plus professsionnel.
 
 ```{r warning=FALSE}
-Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$BuysBalotModele)
+plotBuysBallot <- Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$BuysBalotModele)
+plotBuysBallot
 ```
+
+Sauvegarde de l'image pour utilisation ultérieur dans l'application web.
+```{r}
+library(tidyverse)
+#Utilisation de Cairo pour appliquer de l'anti-Aliasing sur le plot
+library('Cairo')
+
+ggsave(plotBuysBallot, path= "Shiny/www",  filename = 'BuysBallotPlotPrediction.png', dpi = 1500, type = 'cairo',
+       width = 8, height = 5, units = 'in')
+
+#Save aussi du SeasonPlot
+ggsave(SeasonPlot, path= "Shiny/www",  filename = 'SeasonPlot.png', dpi = 1500, type = 'cairo',
+       width = 8, height = 5, units = 'in')
+
+```
+
+
+
+
+
 
 Nous avons réussi à ajuster une droite de régression. on remarque que la prédiction semble bien correspondre à la réalité si on fait abstraction du dernier mois où le nombre de voyageurs a bien plus chuté que la prédiction du modèle de Buys-Balot.
 
@@ -655,7 +679,11 @@ Affichage GGplot
 DataAffichageGGplot$ModeleLissageExponentielle <- c(fcst_ets$fitted ,predict_value_ets )
 
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleLissageExponentielle)
+
 ```
+
+
+
 
 ## Modèle ARIMA
 
@@ -988,7 +1016,7 @@ Observons cette mise en production sur nos modèles.
 
 ## Calculs des performances
 
-Dans les concerts, chaque individu chante comme une casserole, pourtant la foule chante systématiquement juste, suivant cet intuition réalisons une prédiction qui est une moyennne des différents modèles réalisés.
+Dans les concerts, chaque individu chante comme une casserole, pourtant la foule chante systématiquement juste, suivant cet intuition réalisons une prédiction qui est une moyenne des différents modèles réalisés.
 
 ```{r}
 DataAffichageGGplot$MoyenneDesModele <- rowMeans(DataAffichageGGplot[,5:9])
@@ -1025,6 +1053,14 @@ cat("\nDifférence en nbre de voyageurs sur le dernier mois : ",predictionglobal
   
 }
 ```
+
+Sauvegardons le modèle de Buys Ballot pour une utilisation ultérieur dans une application Web
+```{r}
+saveRDS(Regression, file = "./Shiny/RegressionAnnees.rda")
+saveRDS(Regression2, file = "./Shiny/RegressionMois.rda")
+```
+
+
 
 ## Conclusion
 

@@ -53,15 +53,10 @@ Affichage_Prediction <- function(Donnees, Modele){
   
   
   #Ajout zoom sur 2019
-  p + 
+ return( p + 
     annotation_custom(ggplotGrob(p2), xmin = 2015, xmax = 2020, ymin = 0, ymax = 290000) +
-    geom_rect(aes(xmin = 2015, xmax = 2020, ymin = 0, ymax =  290000), color='black', linetype='dashed', alpha=0) 
-  
-  
-  
-  
-  
-  
+    geom_rect(aes(xmin = 2015, xmax = 2020, ymin = 0, ymax =  290000), color='black', linetype='dashed', alpha=0) )
+
   
 }
 
