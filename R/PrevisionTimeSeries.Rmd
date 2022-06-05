@@ -129,7 +129,7 @@ Nos prévisions portent sur les 8 mois de l'année 2019
 
 ## Import des données
 
-Import de la base, on sélectionne la colonne des valeurs
+Import de la base, on sélectionne la colonne des valeurs de trafic.
 
 ```{r}
 library(readr)
@@ -142,19 +142,16 @@ data_value <- data[,2]
 summary(data)
 ```
 
-
-
-
 ## Création de notre série temporelle
 
 Nous représentons nos données sous forme de série temporelle.
 
-Une série temporelle est un ensemble de métrique mésurée sur des intervalles de temps réguliers.
+Une série temporelle est un ensemble de métrique mesurée sur des intervalles de temps réguliers.
 
 Création de la série chronologique avec la librairie TSstudio :
 
 -   start : année de début,
--   frequency : nbr de valeur par an =\> on en fréquence mensuelle donc 12
+-   frequency : La fréquence est mensuelle donc on sélectionne une fréquence de 12/an
 
 ```{r}
 library(TSstudio)
@@ -164,11 +161,9 @@ plot_1_TimeSeries(data_ts)
 
 ```
 
-
-## Séparation jeu de données
+## Séparation jeux de données
 
 ```{r}
-#revoir l affichage car ca prend pas en compte tt 2019
 data_ts_train <-
   window(data_ts, start = c(2011, 1), end = c(2018, 12))
 data_ts_test <- window(data_ts, start = c(2019, 1), end = c(2019, 8))
@@ -189,17 +184,17 @@ legend(
 )
 ```
 
--\> strong trend -\> patern qui se repete, saisonnalité ?
-
-## Représentation de la saisonnalité
-
-Analyse de la saisonnalité en superposant chaque année (par mois):
-
--\> en supprimant la tendance on voit bien la saisonnalité =\> saisonnalité régulière
+On observe une forte tendance, et un paterne semble se répété, s'agit-il d'une saisonnalité ?
 
 ## Analyse de notre série temporelle
 
-Chaque point de notre série temporelle peut être exprimer comme une somme ou un produit de 3 composantes : - Saisonnalité (St), - Tendance (Tt), - Erreur (ϵt),
+Chaque point de notre série temporelle peut être exprimer comme une somme ou un produit de 3 composantes :
+
+-   Saisonnalité $St$
+
+-   Tendance $Tt$
+
+-   Erreur $ϵt$
 
 Yt=St+Tt+ϵt ou Yt=St×Tt×ϵt
 
@@ -216,9 +211,12 @@ kpss.test(data_ts)
 
 Donc notre série est bien non-stationnaire.
 
+## Représentation de la saisonnalité
+
+Analyse de la saisonnalité en superposant chaque année (par mois).
+
 ```{r}
 ggseasonplot(data_ts)
-
 ```
 
 ```{r}
@@ -239,9 +237,15 @@ SeasonPlot <-  ggseasonplot(data_ts_without_trend) +
 SeasonPlot
 ```
 
+En supprimant la tendance on observe la saisonnalité.
+
 ## Représentation des décompositions possibles
 
-DECOMPOSITION : additive / Multiplicative Ts = Trend + Seasonal + Random / Ts = Trend \* Seasonal \* Random
+DECOMPOSITION
+
+additive : Ts = Trend + Seasonal + Random
+
+Multiplicative : Ts = Trend \* Seasonal \* Random
 
 ```{r}
 decomposed_data <- decompose(data_ts_train, type="additive")
@@ -252,9 +256,9 @@ plot(decomposed_data$random)
 boxplot(data_ts ~ cycle(data_ts))
 ```
 
--\> on distingue des saisonnalités =\> faire régression ca n'a pas de sens =\> modèle de Buys Ballot
+On distingue des saisonnalités =\> faire une régression simple n'a pas de sens, nous utiliserons le modèle de Buys Ballot.
 
--\> bonne repartition du bruit -\> quelques outliers
+On remarque une bonne répartition du bruit avec quelques outliers
 
 ```{r}
 checkresiduals(remainder(decomposed_data))
@@ -340,30 +344,28 @@ accuracy(snaivem, data_ts_test)
 
 ## Modèle
 
-<https://mpra.ub.uni-muenchen.de/77718/1/MPRA_paper_77718.pdf> page 175
-
 L'approche de BUYS-BALLOT consiste à introduire des variables indicatrices correspondant à chaque saison définit par le cycle d'observation. Pour les données trimestrielles, on intègre 4 variables indicatrices. Et pour les données mensuelles, on intègre 12 variables indicatrices.
 
 Le modèle doit alors être estimé (sans constante) avec ces variables indicatrices.
 
-## Prédiction des valeurs de 2019
+Soit le modèle de Buys Ballot tel que $Xt = Zt + St + \mu t$
 
-Préparation des données.
+Nous allons estimé dans un premier temp la tendance $Zt$, puis dans un second temps la saisonnalité $St$, tandis que les $\mu t$ ne pourrons pas être estimer puisqu'il s'agit par définition d'accidents.
+
+## Préparation des données
 
 ```{r}
 Annees=as.numeric(time(data_ts_train))
 ts_DataFrame =data.frame(trafic=data_ts_train,X=as.numeric(Annees))
 ```
 
-Création du modèle
+## Estimation de la tendance
 
 ```{r}
 Regression <- lm(trafic~X,data = ts_DataFrame)
 ```
 
-$Xt = Zt + St + \mu t$
-
-La tendance Prédiction sur les données futurs.
+On utilise la droite de régression obtenu pour prédire la tendance des 8 mois de 2019
 
 ```{r}
 tendance=predict(Regression)
@@ -374,29 +376,33 @@ AnneeMoisNumericFutur=seq(max(Annees)+1/12,length=8,by=1/12)
 tendance2=predict(Regression, newdata=data.frame(X=AnneeMoisNumericFutur)) 
 ```
 
+## Estimation de la saisonnalité
+
+On récupère les résidus issu de l'estimation de la tendance.
+
 ```{r}
 ts_DataFrame$trafic_residual <- residuals(Regression)
 ```
 
-Définissons le mois
+On définit la saisonnalité avec les mois.
 
 ```{r}
 ts_DataFrame$mois <- round(ts_DataFrame$X - trunc(ts_DataFrame$X),digit=4)
 ```
 
-Création du 2nd modèle avec les mois
+On estime la saisonnalité à partir des résidus du modèle comportant uniquement la tendance.
 
 ```{r}
 Regression2 =lm(trafic_residual~0+as.factor(mois),data=ts_DataFrame)
 ```
 
-Prédiction de la saisonnalité
+Prédiction de la saisonnalité sur le jeu d'entraînement
 
 ```{r}
 prediction2 =predict(Regression2)
 ```
 
-Prédiction sur les mois
+Prédiction sur les 8 mois de 2019
 
 ```{r}
 MoisNumeric= round(AnneeMoisNumericFutur - trunc(AnneeMoisNumericFutur
@@ -415,7 +421,7 @@ hist(ResidusRegression2)
 
 ## Auto corrélation de la série temporelle
 
-L'autocorrélation de notre série temporelle correspond à la corrélation entre une mesure du trafic $t$ et les mesures précédentes $t - k$ ou les mesures suivantes $t + k$.
+L'auto corrélation de notre série temporelle correspond à la corrélation entre une mesure du trafic $t$ et les mesures précédentes $t - k$ ou les mesures suivantes $t + k$.
 
 L'auto covariance d'une variable $Xt$ de moyenne $\mu$ et d'écart type $\sigma$ à un décalage $k$ est donné par la formule
 
@@ -431,7 +437,7 @@ Affichons les auto-corrélations de la séries grâce à un corrélogramme
 ACF_Sur_Valeurs_Predites <- acf(prediction2)
 ```
 
-Il est normal que la série soit autocorrélé totalement à elle avec un décalage nulle.
+Il est normal que la série soit auto corrélé totalement à elle avec un décalage nulle.
 
 On observe une corrélation forte (0.87) avec un décalage (lag) de 12, cela correspond bien à une saisonnalité annuelle.
 
@@ -466,7 +472,7 @@ Le résultat obtenu est correct. L'auto corrélation avec un décalage de 12 est
 
 De plus cette auto corrélation étant positive, cela indique une tendance croissante.
 
-la deuxième plus forte corrélation est obsersé avec un décalage de 5, observons cela graphiquement
+la deuxième plus forte corrélation est observé avec un décalage de 5, observons cela graphiquement
 
 ```{r}
 plot  ( 1:length(prediction2),   prediction2,type="l")
@@ -481,13 +487,15 @@ print(data.frame(ACF_Sur_Valeurs_Predites$lag,ACF_Sur_Valeurs_Predites$acf)[1:13
 
 Après avoir étudier les auto-corrélations sur l'ensemble du modèle, Observons les auto-corrélations sur les résidus du modèle de Buys-Ballot.
 
--   Texte pour dire que les accidents ne doivent pas être corrélés \*
+Une auto corrélation de ces résidus signifierait que les accidents seraient prévisibles, cela n'aurait aucun sens et invaliderait notre modèle.
 
 ```{r}
 plot(acf(ResidusRegression2))
 ```
 
-Pour notre modèle, il n'y a aucune auto-corrélation significative. (symbolisé par la ligne bleu)
+Pour notre modèle, il n'y a aucune auto-corrélation significative des résidus (symbolisé par la ligne bleu).
+
+Notre modèle est donc viable.
 
 ## Comparaison des prédictions et des valeurs réelles
 
@@ -582,6 +590,7 @@ plotBuysBallot
 ```
 
 Sauvegarde de l'image pour utilisation ultérieur dans l'application web.
+
 ```{r}
 library(tidyverse)
 #Utilisation de Cairo pour appliquer de l'anti-Aliasing sur le plot
@@ -596,12 +605,7 @@ ggsave(SeasonPlot, path= "Shiny/www",  filename = 'SeasonPlot.png', dpi = 1500, 
 
 ```
 
-
-
-
-
-
-Nous avons réussi à ajuster une droite de régression. on remarque que la prédiction semble bien correspondre à la réalité si on fait abstraction du dernier mois où le nombre de voyageurs a bien plus chuté que la prédiction du modèle de Buys-Balot.
+Nous avons réussi à Créer un modèle de prédiction correct avec Buys-Ballot. On remarque que la prédiction semble bien correspondre à la réalité si on fait abstraction du dernier mois où le nombre de voyageurs a bien plus chuté que la prédiction du modèle de Buys-Balot.
 
 Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
@@ -611,9 +615,9 @@ Comparons avec un ajustement local réalisé par lissage moyennes mobiles.
 
 ## Définition
 
-Une moyenne mobile est un filtre linéaire. Il permet de transformer une série chronologique avec comme but d'annuler une composante (tendance ou saison) pour en laisser les autres invariantes tout en réduisant le bruit. 
+Une moyenne mobile est un filtre linéaire. Il permet de transformer une série chronologique avec comme but d'annuler une composante (tendance ou saison) pour en laisser les autres invariantes tout en réduisant le bruit.
 
-Une moyenne mobile en t est définit comme une combinaison linéaire finie des valeurs de la série correspondant à des dates entourant t, c'est donc un lissage de la série. 
+Une moyenne mobile en t est définit comme une combinaison linéaire finie des valeurs de la série correspondant à des dates entourant t, c'est donc un lissage de la série.
 
 ## Choix Moyenne mobiles
 
@@ -633,7 +637,6 @@ plot(ma_forecast)
 accuracy(ma_forecast, data_ts_test)
 
 ```
-
 
 ```{r}
 
@@ -694,9 +697,6 @@ Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleLissageExpon
 
 ```
 
-
-
-
 ## Modèle ARIMA
 
 A FAIRE
@@ -746,23 +746,20 @@ Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleArima)
 
 Prophet est un outil de prévision de série chronologique open-source mis en production par Facebook.
 
-L'idée est décomposer la série temporelle sous la forme : 
+L'idée est décomposer la série temporelle sous la forme :
 
 y(t) = g(t) + s(t) + h(t) + e(t)
 
 avec respectivement :
 
-- g(t) : la tendance (linéaire ou logistique)
-- s(s) : une ou plusieurs composantes saisonnières (annuelle, hebdomadaire ou            quotidienne)
-- h(t) : l’effet des vacances ou de jours spécifiques qui pourront être paramétrés
-- e(t) : l’erreur, bruit aléatoire qui mesure l’écart entre le modèle et les données réelles
+-   g(t) : la tendance (linéaire ou logistique)
+-   s(s) : une ou plusieurs composantes saisonnières (annuelle, hebdomadaire ou quotidienne)
+-   h(t) : l'effet des vacances ou de jours spécifiques qui pourront être paramétrés
+-   e(t) : l'erreur, bruit aléatoire qui mesure l'écart entre le modèle et les données réelles
 
-Ce modèle est particulièrement utile quand on a de forte saisonnalités et permet de prendre en compte les vacances (et ses effets) par pays. 
+Ce modèle est particulièrement utile quand on a de forte saisonnalités et permet de prendre en compte les vacances (et ses effets) par pays.
 
-Préparation des données:
-- format des dates 
-- colonne du temps name : ds
-- colonne de la mesure quantitative name : y
+Préparation des données: - format des dates - colonne du temps name : ds - colonne de la mesure quantitative name : y
 
 ```{r}
 library(prophet)
@@ -1067,12 +1064,11 @@ cat("\nDifférence en nbre de voyageurs sur le dernier mois : ",predictionglobal
 ```
 
 Sauvegardons le modèle de Buys Ballot pour une utilisation ultérieur dans une application Web
+
 ```{r}
 saveRDS(Regression, file = "./Shiny/RegressionAnnees.rda")
 saveRDS(Regression2, file = "./Shiny/RegressionMois.rda")
 ```
-
-
 
 ## Conclusion
 
