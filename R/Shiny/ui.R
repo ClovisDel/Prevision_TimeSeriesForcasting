@@ -21,7 +21,7 @@ shinyUI(fluidPage(
         sidebarPanel(
           
             
-            dateInput("date", label = h3("Rentrez le mois à prédire"), value = "2019-01"),
+            dateInput("date", label = h3("Rentrez le mois à prédire"), value = "2019-01-01"),
             
             hr(),
             fluidRow(column(10, verbatimTextOutput("value"))),
@@ -34,7 +34,7 @@ shinyUI(fluidPage(
           h1("Prédiction du trafic (en bleu)"),
           p("Observons la qualité de nos estimations par rapport aux données réelles"),
           img(src = "BuysBallotPlotPrediction.png",height = 400 , width = 800),
-          br(), br(), br(),
+          div(),
       h1("Les mois les plus importants en terme de trafic"),
       p("Observons quels mois sont les plus demandeurs en moyens"),
            img(src = "SeasonPlot.png",height = 400 , width = 800)

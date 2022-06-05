@@ -9,22 +9,24 @@
 
 library(shiny)
 
-#Import Données Préparés en Amont
+
 
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
   
+  
+  DateEntree <- reactive({
+    print(input$date)
+   as.Date( input$date)
+  })
+  
 
   output$Prediction <- renderText({ 
     paste("L'estimation de ",
-          format(input$date, "%b %y"),
+          format(DateEntree(), "%b %y"),
           " est de ",
-          round(
-            predict(Regression,newdata = data.frame(X = ((as.numeric(format(input$date, "%m")) - 1) * (1 / 12) 
-                                                         + as.numeric(format(input$date, "%Y")))))
-              + predict(Regression2, newdata = data.frame(mois = (as.numeric(format(input$date, "%m")) - 1) * (1 / 12)))
-              ),
+          PredictionBuysBallot(DateEntree()),
             " voyageurs")
   })
 
