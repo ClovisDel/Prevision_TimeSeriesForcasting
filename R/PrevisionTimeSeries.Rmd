@@ -619,28 +619,97 @@ Une moyenne mobile est un filtre linéaire. Il permet de transformer une série 
 
 Une moyenne mobile en t est définit comme une combinaison linéaire finie des valeurs de la série correspondant à des dates entourant t, c'est donc un lissage de la série.
 
+Une moyenne mobile d'ordre m peut être écrite tel que $\begin{equation} \hat{T}_{t} = \frac{1}{m} \sum_{j=-k}^k y_{t+j}, \end{equation}$
+
+Avec $m=2k+1$
+
+L'estimation de la tendance + saisonnalité au temps t est obtenue en faisant la moyenne des valeurs de la série chronologique dans les k périodes de t. Les observations qui sont proches dans le temps sont également susceptibles d'être proches en valeur estimé.
+
+Par conséquent, la moyenne élimine une partie du caractère aléatoire des données, laissant une composante tendance + saisonnalité lisse.
+
 ## Choix Moyenne mobiles
 
-## Conservation & Annulation
+Commençons notre analyse avec une moyenne mobile d'ordre 11, décidé de façon arbitraire
 
 ```{r}
 library(forecast)
-ma_model <- ma(data_ts_train, order=12, centre=TRUE)
-ma_model
-plot(data_ts_train)
-lines(ma_model, col="blue", lwd=3)
-
-ma_forecast <- forecast(ma_model, h=14)
-ma_forecast
-plot(ma_forecast)
-
-accuracy(ma_forecast, data_ts_test)
-
+MM_ordre_11 <-  ma(DataAffichageGGplot$trafic[1:96] , 11,centre=FALSE)
 ```
+
+La première valeur (non manquante) de cette colonne est la moyenne des onze premières observations càd de janvier à novembre 2011. La deuxième valeur est la moyenne des valeurs de février 2011 à décembre 2011 et ainsi de suite. De façon à que chaque valeur est la moyenne des observations sur 11 mois centrée sur le mois correspondant.
+
+Il est donc normale qu'il manque 5 estimations pour les premiers & derniers mois puisque les données antérieur à 2011 ne sont pas disponibles tout comme les données futur sont inconnus.
+
+Il existe une méthode qui permet l'estimation des points extrêmes que nous utiliserons pour la suite.
+
+Affichage de la moyenne mobile simple d'ordre 11
 
 ```{r}
-
+Affichage_Prediction(DataAffichageGGplot,c(MM_ordre_11,  rep(NA, 8)) )
 ```
+
+On remarque que les données estimées (ici en bleu) représente bien la tendance générale de la série, dans le cas d'une moyenne mobile, plus son ordre est élevé, plus la courbe des estimations sera lisse.
+
+Voici pour exemple l'affichage de différentes moyennes mobiles simples.
+
+```{r}
+MM_ordre_3 <-  ma(DataAffichageGGplot$trafic[1:96] , 3,centre=FALSE)
+MM_ordre_5 <-  ma(DataAffichageGGplot$trafic[1:96] , 5,centre=FALSE)
+MM_ordre_15 <-  ma(DataAffichageGGplot$trafic[1:96] , 15,centre=FALSE)
+
+Affichage_Prediction(DataAffichageGGplot,c(MM_ordre_3,  rep(NA, 8)) ) + labs(title = "Moyenne Mobile d'ordre 3")
+Affichage_Prediction(DataAffichageGGplot,c(MM_ordre_5,  rep(NA, 8)) ) + labs(title = "Moyenne Mobile d'ordre 5")
+Affichage_Prediction(DataAffichageGGplot,c(MM_ordre_15,  rep(NA, 8)) ) + labs(title = "Moyenne Mobile d'ordre 15")
+```
+
+Nous avons choisi des moyennes mobiles simples d'un ordre impair pour qu'elles soient symétriques. En effet, dans une moyenne mobile d'ordre m=2k+1, on fait la moyenne de l'observation centrale et des k observations de chaque côté. Mais si m était pair, elle ne serait plus symétrique.
+
+## Moyenne mobile d'une Moyenne mobile
+
+Il est possible d'appliquer une moyenne mobile à une moyenne mobile. Cela permet de rendre symétrique une moyenne mobile d'ordre pair.
+
+Appliquons cela par une moyenne mobile d'ordre 2 sur une moyenne mobile d'ordre 4
+
+```{r}
+MM_ordre_4 <-  ma(DataAffichageGGplot$trafic[1:96] , 4,centre=FALSE)
+MM_Ordre_2x4 <- ma(DataAffichageGGplot$trafic[1:96], 4, centre=TRUE)
+
+head(MM_ordre_4)
+head(MM_Ordre_2x4)
+```
+
+Une MM 2x4 signfie une MM d'ordre 4 suivi d'une MM d'ordre 2. Concrètement, les 5 premières valeurs de la série chronologique sont 245900, 238000, 263227,277991 et 286691. Les deux premiers termes de la MM d'ordre 4 sera
+
+1.  (245900+238000+263227+277991) /4 = 1 025 118/4 = 256279.5
+
+2.  (238000+263227+277991+286691) /4 = 266477.2
+
+Donc le premier terme de la moyenne mobile d'ordre 2, calculé à partir des 2 premiers termes de la MM d'ordre 4, donnera (256279.5 + 266477.2)/2 = 261378.4
+
+On combinant ces deux moyennes mobiles, nous avons obtenu une moyenne mobile centrée d'ordre 4, les valeurs calculées obtenues sont symétriques, en effet, nous avons appliqué cela aux données :
+
+$\begin{align*} \hat{T}_{t} &= \frac{1}{2}\Big[ \frac{1}{4} (y_{t-2}+y_{t-1}+y_{t}+y_{t+1}) + \frac{1}{4} (y_{t-1}+y_{t}+y_{t+1}+y_{t+2})\Big] \\ &= \frac{1}{8}y_{t-2}+\frac14y_{t-1} + \frac14y_{t}+\frac14y_{t+1}+\frac18y_{t+2}. \end{align*}$
+
+Ainsi si l'on combine 2 moyennes mobiles, nous devons appliqués une moyenne mobile pair après une moyenne mobile pair et une moyenne mobile impair après une moyenne mobile impair afin que nos résultats soit symétriques.
+
+## Conservation & Annulation
+
+Soit la Moyenne mobile 2x12 $\hat{T}_{t} = \frac{1}{32}y_{t-6} + \frac{1}{32}y_{t-5} + \frac{1}{16}y_{t-4} + \frac{1}{16}y_{t-3} + \frac{1}{16}y_{t-2} + \frac{1}{8}y_{t-1} +\frac{1}{4}y_{t} + \frac{1}{8}y_{t+1} +\frac{1}{16}y_{t+2} + \frac{1}{16}y_{t+3} + \frac{1}{16}y_{t+4} + \frac{1}{32}y_{t+5} + \frac{1}{32}y_{t+6}.$
+
+Appliquée au trafic qui a une saisonnalité annuelle, chaque mois de l'année a le même poids, car le premier et le dernier terme s'appliquent au même mois des années consécutives. Ainsi, la variation saisonnière est éliminée.
+
+Un autre choix de Moyenne mobile entraînera une estimation soumis à la saisonnalité.
+
+```{r}
+MM_ordre_2x12 <- ma(DataAffichageGGplot$trafic[1:96], 12)
+Affichage_Prediction(DataAffichageGGplot,c(MM_ordre_2x12,  rep(NA, 8)) ) + labs(title = "Moyenne Mobile d'ordre 2x12")
+```
+
+La droite de prédiction obtenu ne présente aucune trace de saisonnalité. Un autre choix de moyenne mobile (hormis 12k $k \in N$) aurait présenter des traces de saisonnalités.
+
+Nous avons vu que la combinaison de moyennes mobiles produisait des moyennes mobiles pondérés, la combinaison que nous avons utilisés produisait les poids suivants $\left[\frac{1}{32},\frac{1}{32},\frac{1}{16},\frac{1}{16},\frac{1}{16},\frac{1}{8},\frac{1}{4},\frac{1}{8},\frac{1}{16},\frac{1}{16},\frac{1}{16},\frac{1}{32},\frac{1}{32}\right]$
+
+En effet, une moyenne mobile d'ordre m s'écrit tel que $\hat{T}_t = \sum_{j=-k}^k a_j y_{t+j}$ Avec $k=(m-1)/2$ et les poids $\left[a_{-k},\dots,a_k\right]$ Si leur somme vaut 1 et que ces poids sont symétriques (tq $a_j = a_{-j}$) alors la courbe obtenu sera plus lisse.
 
 # Lissage exponentielle
 
