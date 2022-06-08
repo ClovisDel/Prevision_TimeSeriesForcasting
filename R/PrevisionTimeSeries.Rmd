@@ -798,7 +798,7 @@ MAPE(predict_value_se, data_ts_test) # MAPE = 7.95
 
 ## Optimisation du modèle
 
-Fit Exponential Smoothing model -\> trouve le meilleur lissage expo
+La librairie Forecast permet de trouver automatiquement le meilleur degré de lissage exponentielle fournissant la meilleure prédiction. 
 
 ```{r}
 fit_ets <- ets(data_ts_train) 
@@ -836,9 +836,22 @@ Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ModeleLissageExpon
 
 ARIMA : AutoRegressive Integrated Moving Average
 
-Le modèle ARIMA est une combinaison du modèle ARMA combiné à une différentiation (le Integrated)
+Le modèle ARIMA est une combinaison du modèle ARMA* combiné à une différentiation (le Integrated)
 
-Différentiation = rétirer les tendances -\> tendance linéaire : une différenciation -\> tendance quadradique : deux différenciations
+*Le modèle ARMA (Autoregressive Moving Average Model) est définit par l'idée de décrire une séries temporelles en deux polynômes. Le premier étant pour l'auto regréssion et le second pour la moyenne mobile. 
+ARMA(p,q) où : 
+  - p est l'ordre du polynôme autorégressif,
+  - q est l'ordre du polynôme de moyenne mobile
+L'équation est données par 
+avec : 
+    [ Y A UNE IMAGE LA ]
+    φ = les paramètres du modèle autorégressif,
+    θ = les paramètres du modèle de moyenne mobile.
+    c = une constante,
+    Σ = notation de sommation,
+    ε = termes d'erreur (bruit blanc).
+
+Une différentiation correspond à rétirer les tendances -\> tendance linéaire : une différenciation -\> tendance quadradique : deux différenciations
 
 Le modèle SARIMA est une combinaison du modèle ARIMA qui prend en compte la composante saisonniaire.
 
@@ -940,6 +953,18 @@ Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$ProphetModele)
 
 ## LSTM
 
+Un réseau LSTM (Long Short Term Memory) est un type particulier de réseau de neuronnes récurrent qui est capable d'apprendre les dépendances à long terme. Il a été introduit pas Hochreiter & Schmidhuber en 1997. 
+
+L'idée d'un réseaux récurrent est de mettre en place des boucles qui permettent aux informations de persister. Ils sont représentés par une chaine de modules répétitifs de réseau de neuronnes. 
+
+Chaque module est traversé un à un en faisant évoluer son état qui peut se voir ajouter ou supprimer de l'informations, ces changements sont régulées par ce qu'on appelle des "portes". Elle est définit par couche de neuronnes sigmoïde et d'opération de multiplication ponctuelle qui laisse passer ou non l'information. La fonction Sigmoïde produit des nombres entre 1 et 0 ce qui définit la quantité de chaque composant qui doit passer.  
+
+# Préparation des données 
+
+On veut prendre l'année précedente pour apprendre \> lag de 12, en réalité ca fait 12 - 1 pour avoir à chaque prédiction basée sur 12 valeurs
+
+Puis en transforme en array 3D car le modèle LSTM prend un tensor de format 3D [samples, timesteps, features] samples : nbr d'observation par batchs timesteps : lag features : nbr de valeur predites
+
 ```{r}
 
 scale_factors <- c(mean(data$y), sd(data$y))
@@ -954,9 +979,6 @@ prediction <- 12
 lag <- prediction
 ```
 
-On veut prendre l'année précedente pour apprendre \> lag de 12, en réalité ca fait 12 - 1 pour avoir à chaque prédiction basée sur 12 valeurs
-
-puis en transforme en array 3D car le modèle LSTM prendre un tensor de format 3D [samples, timesteps, features] samples : nbr d'observation par batchs timesteps : lag features : nbr de valeur predites
 
 ```{r}
 scaled_train <- as.matrix(scaled_train)
@@ -1017,15 +1039,18 @@ x_pred_arr <- array(
 
 ```
 
+## Construction de notre réseaux de neuronnes 
+
+
 ```{r}
 lstm_model <- keras_model_sequential()
 
 lstm_model %>%
-  layer_lstm(units = 50, # size of the layer
+  layer_lstm(units = 50, # taille du layer
        batch_input_shape = c(1, 12, 1), # batch size, timesteps, features
        return_sequences = TRUE,
        stateful = TRUE) %>%
-  # fraction of the units to drop for the linear transformation of the inputs
+  # pourcentage de neuronnes qu'on détruit à chaque itération 
   layer_dropout(rate = 0.5) %>%
   layer_lstm(units = 50,
         return_sequences = TRUE,
@@ -1041,6 +1066,8 @@ summary(lstm_model)
 
 ```
 
+## Apprentissage sur le jeu d'entrainement 
+
 ```{r}
 lstm_model %>% fit(
     x = x_train_arr,
@@ -1048,9 +1075,13 @@ lstm_model %>% fit(
     batch_size = 1,
     epochs = 20,
     verbose = 0,
-    shuffle = FALSE
+    shuffle = FALSE #pour preserver nos séquences
 )
 ```
+
+# Prédiction sur le jeu de Test
+
+On a 50 résultats / prédictions par input donc \> transforme pour une seule prédiciton
 
 ```{r}
 lstm_forecast <- lstm_model %>%
@@ -1060,11 +1091,7 @@ lstm_forecast <- lstm_model %>%
 # rescale en format basique
 lstm_forecast <- lstm_forecast * scale_factors[2] + scale_factors[1]
 lstm_forecast
-```
 
-X résultats / prédictions par input donc \> transforme pour une seule prédiciton
-
-```{r}
 fitted <- predict(lstm_model, x_train_arr, batch_size = 1) %>%
      .[, , 1]
 
@@ -1084,6 +1111,9 @@ length(fitted)
 
 ```
 
+# Affichage et évaluation 
+
+Nos résultats ne sont pas très convaincant même en faisant varier nos paramètres, ceci peut être explicable par le manque d'observations. 
 ```{r}
 lstm_forecast <- ts(lstm_forecast,
     start = c(2019, 1),
@@ -1116,6 +1146,9 @@ Affichage GGplot
 DataAffichageGGplot$LSTM_Modele <- fitted
 Affichage_Prediction(DataAffichageGGplot, DataAffichageGGplot$LSTM_Modele)
 ```
+
+
+
 
 # Comparaison Modèle
 
